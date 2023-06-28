@@ -1,5 +1,5 @@
 //
-//  InputStreamIterable.swift
+//  BytesParser+private.swift
 //
 //  Copyright © 2023 Darren Ford. All rights reserved.
 //
@@ -21,86 +21,63 @@
 
 import Foundation
 
-internal class InputStreamIterable: BytesParserIterable {
-	let inputStream: InputStream
-	
-	static let DefaultSize = 1024
-	
-	var readBufferSize = InputStreamIterable.DefaultSize
-	var readBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: InputStreamIterable.DefaultSize)
-	
-	init(inputStream: InputStream) {
-		self.inputStream = inputStream
-	}
-	
-	var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
-	
-	deinit {
-		readBuffer.deallocate()
-	}
-	
-	@inlinable func reconfigureIfNeeded(_ count: Int) {
-		if count > self.readBufferSize {
-			self.readBuffer.deallocate()
-			self.readBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: InputStreamIterable.DefaultSize)
-		}
-	}
-	
+internal extension BytesParser {
 	/// Read a single byte from the input stream
 	func next() throws -> UInt8 {
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
-		self.reconfigureIfNeeded(1)
-		let readCount = self.inputStream.read(self.readBuffer, maxLength: 1)
+		self.readBuffer.requireSize(1)
+		let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
 		guard readCount == 1 else { throw BytesParser.ParseError.endOfData }
-		return self.readBuffer.pointee
+		return self.readBuffer.buffer.pointee
 	}
-	
+
 	/// Read the next `count` bytes from the input stream
 	func next(_ count: Int) throws -> Data {
 		guard count > 0 else { return Data() }
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
-		
-		self.reconfigureIfNeeded(count)
-		
+
+		// Make sure our internal buffer is big enough to hold all the data required
+		self.readBuffer.requireSize(count)
+
 		var result = Data()
-		
+
 		// Loop until we've read all the required data
 		var read = 0
 		while read != count {
-			let readCount = self.inputStream.read(self.readBuffer, maxLength: count - read)
+			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: count - read)
 			if readCount == 0, !self.inputStream.hasBytesAvailable {
 				// If we haven't read anything and there's no more data to read,
 				// then we're at the end of file
 				throw BytesParser.ParseError.endOfData
 			}
-			
+
 			if readCount > 0 {
 				// Add the read data to the result
-				result += Data(bytes: self.readBuffer, count: readCount)
-				
+				result += Data(bytes: self.readBuffer.buffer, count: readCount)
+
 				// Move the read header forward
 				read += readCount
 			}
 		}
-		
+
 		return result
 	}
-	
+
 	func nextUpToIncluding(_ byte: UInt8) throws -> Data {
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
-		
+
 		// We are reading 1 byte at a time (not overly optimal!)
-		self.reconfigureIfNeeded(1)
-		
+		self.readBuffer.requireSize(1)
+
 		var result = Data()
-		
+
 		while true {
-			let readCount = self.inputStream.read(self.readBuffer, maxLength: 1)
+			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
 			if readCount == 0 {
 				return result
 			}
-			result += Data(bytes: self.readBuffer, count: 1)
-			if self.readBuffer[0] == byte {
+			result += Data(bytes: self.readBuffer.buffer, count: 1)
+			if self.readBuffer.buffer[0] == byte {
 				return result
 			}
 		}

@@ -1,5 +1,5 @@
 //
-//  ByteIterable.swift
+//  ByteBuffer.swift
 //
 //  Copyright © 2023 Darren Ford. All rights reserved.
 //
@@ -21,14 +21,27 @@
 
 import Foundation
 
-/// A container that can sequentially read bytes
-public protocol BytesParserIterable {
-	/// Does the container have more bytes to read?
-	var hasMoreData: Bool { get }
-	/// Return the next byte
-	func next() throws -> UInt8
-	/// Returns the next `count` bytes in the iterable object
-	func next(_ count: Int) throws -> Data
-	/// Returns the data up to **and including** the first instance of `byte`
-	func nextUpToIncluding(_ byte: UInt8) throws -> Data
+/// A wrapper around a pointer to an array of bytes
+internal class ByteBuffer {
+	init() {
+		self.buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: ByteBuffer.DefaultSize)
+	}
+
+	deinit {
+		self.buffer.deallocate()
+	}
+
+	func requireSize(_ count: Int) {
+		if count > self.readBufferSize {
+			self.buffer.deallocate()
+			self.buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
+		}
+	}
+
+	// The raw byte buffer
+	internal private(set) var buffer: UnsafeMutablePointer<UInt8>
+
+	// Private
+	private static let DefaultSize = 1024
+	private var readBufferSize = ByteBuffer.DefaultSize
 }

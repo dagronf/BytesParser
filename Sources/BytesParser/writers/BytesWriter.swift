@@ -1,8 +1,22 @@
 //
-//  File.swift
-//  
+//  BytesWriter.swift
 //
-//  Created by Darren Ford on 28/6/2023.
+//  Copyright © 2023 Darren Ford. All rights reserved.
+//
+//  MIT license
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+//  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+//  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+//  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all copies or substantial
+//  portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+//  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+//  OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+//  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 import Foundation
@@ -18,46 +32,60 @@ public class BytesWriter {
 		case noDataAvailable
 	}
 
-	let writer: BytesWriterGenerator
+	internal let writer: OutputStream
 
 	/// Create a byte writer that writes to a Data() object
 	public init() throws {
-		self.writer = try OutputDataWriter()
+		self.writer = OutputStream(toMemory: ())
+		self.writer.open()
 	}
 
 	/// Create a byte writer that writes to a file URL
 	public init(fileURL: URL) throws {
-		self.writer = try OutputFileWriter(fileURL: fileURL)
-	}
-
-	/// Create a byte writer using a ByteWriterGenerator
-	public init(_ writer: BytesWriterGenerator) throws {
-		self.writer = writer
+		assert(fileURL.isFileURL)
+		guard let stream = OutputStream(toFileAtPath: fileURL.path, append: false) else {
+			throw BytesWriter.WriterError.cannotOpenOutputFile
+		}
+		self.writer = stream
+		stream.open()
 	}
 
 	/// Must be called when you've finished writing.
-	public func complete() { self.writer.complete() }
+	public func complete() { self.writer.close() }
 
-	/// If the writer supports generating data, the data
-	public func data() throws -> Data { try self.writer.data() }
+	/// If the writer supports generating data, the data that was generated
+	public func data() throws -> Data {
+		guard let data = self.writer.property(forKey: .dataWrittenToMemoryStreamKey) as? Data else {
+			throw BytesWriter.WriterError.noDataAvailable
+		}
+		return data
+	}
 }
 
 // MARK: - Data and bytes
 
 public extension BytesWriter {
+	/// Write the contents of a Data object to the output
+	func writeData(_ data: Data) throws {
+		let writtenCount = withUnsafeBytes(of: data) {
+			writer.write($0.baseAddress!, maxLength: data.count)
+		}
+		guard writtenCount == data.count else {
+			throw BytesWriter.WriterError.unableToWriteBytesToFile
+		}
+	}
+
 	/// Write an array of bytes to the output
 	func writeBytes(_ bytes: [UInt8]) throws {
-		try self.writer.writeBytes(bytes)
+		let writtenCount = writer.write(bytes, maxLength: bytes.count)
+		guard writtenCount == bytes.count else {
+			throw BytesWriter.WriterError.unableToWriteBytesToFile
+		}
 	}
 
 	/// Write a single byte to the output
-	func writeByte(_ byte: UInt8) throws {
-		try self.writer.writeByte(byte)
-	}
-
-	/// Write the contents of a Data object to the output
-	func write(_ data: Data) throws {
-		try self.writer.writeData(data)
+	@inlinable func writeByte(_ byte: UInt8) throws {
+		try self.writeBytes([byte])
 	}
 }
 
@@ -91,7 +119,7 @@ public extension BytesWriter {
 	/// Write the integer's bytes into a data object
 	private func writeInteger<T: FixedWidthInteger>(_ value: T) throws {
 		return try withUnsafeBytes(of: value) {
-			try self.writer.writeData(Data($0))
+			try self.writeData(Data($0))
 		}
 	}
 }
@@ -142,28 +170,30 @@ public extension BytesWriter {
 public extension BytesWriter {
 	func writeAsciiNullTerminated(_ string: String) throws {
 		try self.writeAsciiNoTerminator(string)
-		try self.writer.writeByte(0x00)
+		try self.writeByte(0x00)
 	}
 
 	func writeAsciiNoTerminator(_ string: String) throws {
 		guard let data = string.data(using: .ascii) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
-		try self.writer.writeData(data)
+		try self.writeData(data)
 	}
 }
 
 public extension BytesWriter {
+	/// Write a null terminated UTF8 string
 	func writeUTF8NullTerminated(_ string: String) throws {
 		try self.writeUTF8NoTerminator(string)
-		try self.writer.writeByte(0x00)
+		try self.writeByte(0x00)
 	}
 
+	/// Write a UTF8 string without a terminator
 	func writeUTF8NoTerminator(_ string: String) throws {
 		guard let data = string.data(using: .utf8) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
-		try self.writer.writeData(data)
+		try self.writeData(data)
 	}
 }
 
@@ -171,7 +201,7 @@ public extension BytesWriter {
 
 public extension BytesWriter {
 	/// Generate a Data object
-	/// - Parameter block: The block to write formatted data to the Data object
+	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the Data object
 	/// - Returns: A data object
 	static func generate(_ block: (BytesWriter) throws -> Void) throws -> Data {
 		let writer = try BytesWriter()
@@ -186,8 +216,7 @@ public extension BytesWriter {
 	}
 
 	/// Generate a file
-	/// - Parameter block: The block to write formatted data to the Data object
-	/// - Returns: A data object
+	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the file object
 	static func generate(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
 		let writer = try BytesWriter(fileURL: fileURL)
 		do {

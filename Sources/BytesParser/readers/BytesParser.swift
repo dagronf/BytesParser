@@ -30,30 +30,25 @@ public class BytesParser {
 		case invalidStringEncoding
 	}
 
-	// The parser
-	@usableFromInline let content: BytesParserIterable
-
 	/// Is there more data to read?
-	public var hasMoreData: Bool { self.content.hasMoreData }
-
-	/// Create a byte parser with a
-	public init(iterable: BytesParserIterable) {
-		self.content = iterable
-	}
+	public var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
 
 	/// Create a byte parser from a data object
 	public init(data: Data) {
-		self.content = DataIterable(data: data)
+		self.inputStream = InputStream(data: data)
+		self.inputStream.open()
 	}
 
 	/// Create a byte parser from an array of bytes
 	public init(content: [UInt8]) {
-		self.content = DataIterable(data: Data(content))
+		self.inputStream = InputStream(data: Data(content))
+		self.inputStream.open()
 	}
 
 	/// Create a byte parser with an opened input stream
 	public init(inputStream: InputStream) {
-		self.content = InputStreamIterable(inputStream: inputStream)
+		self.inputStream = inputStream
+		self.inputStream.open()
 	}
 
 	/// Create a byte parser from the contents of a local file
@@ -64,31 +59,35 @@ public class BytesParser {
 		else {
 			throw ParseError.invalidFile
 		}
-		self.content = InputStreamIterable(inputStream: inputStream)
-
-		// Because we're opening from a URL, the inputstream must be opened before reading can occur
+		self.inputStream = inputStream
 		inputStream.open()
 	}
+
+	// private
+	let readBuffer = ByteBuffer()
+
+	// The stream containing the data to be parsed
+	let inputStream: InputStream
 }
 
 // MARK: Bytes and Data
 
 public extension BytesParser {
 	/// Read a single byte
-	@inlinable func readByte() throws -> UInt8 {
-		guard let data = try self.content.next(1).first else {
+	func readByte() throws -> UInt8 {
+		guard let data = try self.next(1).first else {
 			throw ParseError.endOfData
 		}
 		return data
 	}
 
 	/// Read the next `count` bytes into a Data object
-	@inlinable func readData(count: Int) throws -> Data {
-		try self.content.next(count)
+	func readData(count: Int) throws -> Data {
+		try self.next(count)
 	}
 
 	/// Read the next `count` bytes
-	@inlinable func readBytes(count: Int) throws -> [UInt8] {
+	func readBytes(count: Int) throws -> [UInt8] {
 		try self.readData(count: count).map { $0 }
 	}
 }
@@ -98,12 +97,12 @@ public extension BytesParser {
 public extension BytesParser {
 	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
 	func readUpToNextInstanceOfByte(byte: UInt8) throws -> Data {
-		try self.content.nextUpToIncluding(byte)
+		try self.nextUpToIncluding(byte)
 	}
 
 	/// Read up to **and including** the next instance of a **single** null byte (0x00)
-	@inlinable func readUpToNextNullByte() throws -> Data {
-		try self.content.nextUpToIncluding(0x00)
+	func readUpToNextNullByte() throws -> Data {
+		try self.nextUpToIncluding(0x00)
 	}
 }
 
@@ -122,7 +121,7 @@ public extension BytesParser {
 	/// - Returns: An integer value
 	func readInteger<T: FixedWidthInteger>(isBigEndian: Bool) throws -> T {
 		let typeSize = MemoryLayout<T>.size
-		let intData = try content.next(typeSize)
+		let intData = try self.next(typeSize)
 		if isBigEndian {
 			return intData.prefix(typeSize).reduce(0) { $0 << 8 | T($1) }
 		}
@@ -139,6 +138,34 @@ public extension BytesParser {
 	/// Read a little endian int value
 	@inlinable func readLittleEndian<T: FixedWidthInteger>() throws -> T {
 		try self.readInteger(isBigEndian: false)
+	}
+}
+
+public extension BytesParser {
+	@inlinable func readInt8() throws -> Int8 {
+		return try self.readInteger(isBigEndian: true)
+	}
+	@inlinable func readInt16(isBigEndian: Bool = true) throws -> Int16 {
+		return try self.readInteger(isBigEndian: isBigEndian)
+	}
+	@inlinable func readInt32(isBigEndian: Bool = true) throws -> Int32 {
+		return try self.readInteger(isBigEndian: isBigEndian)
+	}
+	@inlinable func readInt64(isBigEndian: Bool = true) throws -> Int64 {
+		return try self.readInteger(isBigEndian: isBigEndian)
+	}
+
+	@inlinable func readUInt8() throws -> UInt8 {
+		return try self.readByte()
+	}
+	@inlinable func readUInt16(isBigEndian: Bool = true) throws -> UInt16 {
+		return try self.readInteger(isBigEndian: isBigEndian)
+	}
+	@inlinable func readUInt32(isBigEndian: Bool = true) throws -> UInt32 {
+		return try self.readInteger(isBigEndian: isBigEndian)
+	}
+	@inlinable func readUInt64(isBigEndian: Bool = true) throws -> UInt64 {
+		return try self.readInteger(isBigEndian: isBigEndian)
 	}
 }
 
@@ -203,7 +230,7 @@ public extension BytesParser {
 	/// Also less safe than the length specific version!
 	func readAsciiNullTerminatedString() throws -> String {
 		let rawContent = try readUpToNextNullByteAndDiscardForString()
-		guard let str = String(data: rawContent, encoding: .utf8) else {
+		guard let str = String(data: rawContent, encoding: .ascii) else {
 			throw ParseError.invalidStringEncoding
 		}
 		return str
@@ -240,7 +267,7 @@ extension BytesParser {
 	/// Read `length` count of 2-byte characters as a UTF16 string
 	func readUTF16String(length: Int, isBigEndian: Bool = true) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try content.next(length * 2)
+		let rawContent = try self.next(length * 2)
 		let encoding: String.Encoding = isBigEndian ? .utf16BigEndian : .utf16LittleEndian
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
@@ -251,7 +278,7 @@ extension BytesParser {
 	/// Read in a series of 2-byte characters terminated with `0x00 0x00`
 	func readUTF16NullTerminatedString(isBigEndian: Bool = true) throws -> String {
 		var rawContent = Data(capacity: 1024)
-		while self.content.hasMoreData {
+		while self.hasMoreData {
 			let char = try self.readData(count: 2)
 			if char.map({ $0 }) == terminator16 { break }
 			rawContent += char
@@ -273,7 +300,7 @@ extension BytesParser {
 	/// Read `length` count of 4-byte characters as a UTF16 string
 	func readUTF32String(length: Int, isBigEndian: Bool = true) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try content.next(length * 4)
+		let rawContent = try self.next(length * 4)
 		let encoding: String.Encoding = isBigEndian ? .utf32BigEndian : .utf32LittleEndian
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
@@ -284,7 +311,7 @@ extension BytesParser {
 	/// Read in a series of 4-byte characters terminated with `0x00 0x00 0x00 0x00`
 	func readUTF32NullTerminatedString(isBigEndian: Bool = true) throws -> String {
 		var rawContent = Data(capacity: 1024)
-		while self.content.hasMoreData {
+		while self.hasMoreData {
 			let char = try self.readData(count: 4)
 			if char.map({ $0 }) == terminator32 { break }
 			rawContent += char

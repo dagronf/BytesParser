@@ -171,4 +171,83 @@ final class ByteIterableTests: XCTestCase {
 			XCTAssertFalse(data.hasMoreData)
 		}
 	}
+
+	func testReadIntegersAndStuff() throws {
+		let data = try BytesWriter.generate { writer in
+			try writer.writeInt16Value(10101, isBigEndian: true)
+			try writer.writeUInt16Value(40000, isBigEndian: true)
+			try writer.writeInt16Value(-10101, isBigEndian: false)
+			try writer.writeUInt16Value(65535, isBigEndian: false)
+
+			try writer.writeFloat64(12345.67890, isBigEndian: false)
+			try writer.writeBool(true)
+			try writer.writeBool(false)
+		}
+
+		try BytesParser.parse(data: data) { parser in
+			XCTAssertEqual(10101, try parser.readInt16(isBigEndian: true))
+			XCTAssertEqual(40000, try parser.readUInt16(isBigEndian: true))
+			XCTAssertEqual(-10101, try parser.readInt16(isBigEndian: false))
+			XCTAssertEqual(65535, try parser.readUInt16(isBigEndian: false))
+			XCTAssertEqual(12345.67890, try parser.readFloat64(isBigEndian: false))
+			XCTAssertEqual(true, try parser.readBool())
+			XCTAssertEqual(false, try parser.readBool())
+		}
+	}
+
+	func testReadRealCrosswordFile() throws {
+		// Parse a binary crossword file
+
+		let url = Bundle.module.url(forResource: "May0612", withExtension: "puz")!
+
+		try BytesParser.parse(fileURL: url) { parser in
+			let /*checksum*/ _: Int16 = try parser.readLittleEndian()
+			let magic = try parser.readAsciiString(length: 12, lengthIncludesTerminator: true)
+			XCTAssertEqual(magic, "ACROSS&DOWN")
+
+			let /*cksum_cib*/ _: Int16 = try parser.readLittleEndian()
+			let /*magic10*/ _ = try parser.readBytes(count: 4)
+			let /*magic14*/ _ = try parser.readBytes(count: 4)
+			let /*magic18*/ _ = try parser.readBytes(count: 4)
+
+			let /*noise_1c*/ _: Int16 = try parser.readLittleEndian()
+			let /*scrambled_tag*/ _: Int16 = try parser.readLittleEndian()
+
+			let /*noise_20*/ _: Int16 = try parser.readLittleEndian()
+			let /*noise_22*/ _: Int16 = try parser.readLittleEndian()
+			let /*noise_24*/ _: Int16 = try parser.readLittleEndian()
+			let /*noise_26*/ _: Int16 = try parser.readLittleEndian()
+			let /*noise_28*/ _: Int16 = try parser.readLittleEndian()
+			let /*noise_2a*/ _: Int16 = try parser.readLittleEndian()
+
+			let width = Int(try parser.readByte())
+			XCTAssertEqual(21, width)
+			let height = Int(try parser.readByte())
+			XCTAssertEqual(21, height)
+
+			let clue_count: UInt16 = try parser.readLittleEndian()
+			XCTAssertEqual(142, clue_count)
+			let /*grid_type*/ _: UInt16 = try parser.readLittleEndian()
+			let /*grid_flag*/ _: UInt16 = try parser.readLittleEndian()
+
+			let solution = try parser.readBytes(count: width * height)
+			XCTAssertEqual(441, solution.count)
+			let text = try parser.readBytes(count: width * height)
+			XCTAssertEqual(441, text.count)
+
+			let title = try parser.readAsciiNullTerminatedString()
+			XCTAssertEqual("NY Times, Sunday, May 6, 2012 A-v Club", title)
+			let author = try parser.readAsciiNullTerminatedString()
+			XCTAssertEqual("Alex Vratsanos / Will Shortz", author)
+			let copyright = try parser.readAsciiNullTerminatedString()
+			XCTAssertEqual("© 2012, The New York Times", copyright)
+
+			var c = [String]()
+			for _ in 0 ..< clue_count {
+				c.append(try parser.readAsciiNullTerminatedString())
+			}
+			XCTAssertEqual("Something you willingly part with?", c[0])
+			XCTAssertEqual("Got in the end", c[141])
+		}
+	}
 }
