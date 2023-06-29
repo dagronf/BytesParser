@@ -45,6 +45,10 @@ internal extension BytesParser {
 		var read = 0
 		while read != count {
 			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: count - read)
+			if readCount < 0 {
+				// The operation failed
+				throw BytesParser.ParseError.endOfData
+			}
 			if readCount == 0, !self.inputStream.hasBytesAvailable {
 				// If we haven't read anything and there's no more data to read,
 				// then we're at the end of file

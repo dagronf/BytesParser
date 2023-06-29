@@ -22,7 +22,6 @@
 import Foundation
 
 public class BytesWriter {
-
 	/// Errors throws by the writer
 	public enum WriterError: Error {
 		case cannotConvertStringEncoding
@@ -67,8 +66,11 @@ public class BytesWriter {
 public extension BytesWriter {
 	/// Write the contents of a Data object to the output
 	func writeData(_ data: Data) throws {
-		let writtenCount = withUnsafeBytes(of: data) {
-			writer.write($0.baseAddress!, maxLength: data.count)
+		let writtenCount = try data.withUnsafeBytes {
+			guard let pointer = $0.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+				throw BytesWriter.WriterError.unableToWriteBytesToFile
+			}
+			return writer.write(pointer, maxLength: data.count)
 		}
 		guard writtenCount == data.count else {
 			throw BytesWriter.WriterError.unableToWriteBytesToFile
@@ -77,7 +79,7 @@ public extension BytesWriter {
 
 	/// Write an array of bytes to the output
 	func writeBytes(_ bytes: [UInt8]) throws {
-		let writtenCount = writer.write(bytes, maxLength: bytes.count)
+		let writtenCount = self.writer.write(bytes, maxLength: bytes.count)
 		guard writtenCount == bytes.count else {
 			throw BytesWriter.WriterError.unableToWriteBytesToFile
 		}
@@ -94,7 +96,7 @@ public extension BytesWriter {
 public extension BytesWriter {
 	/// Write a bool value byte (0x00 == false, 0x01 == true)
 	func writeBool(_ value: Bool) throws {
-		return try writeByte(value ? 0x01 : 0x00)
+		return try self.writeByte(value ? 0x01 : 0x00)
 	}
 }
 
@@ -103,17 +105,17 @@ public extension BytesWriter {
 public extension BytesWriter {
 	/// Write a big-endian representation of an integer value to the stream
 	func writeBigEndian<T: FixedWidthInteger>(_ value: T) throws {
-		return try writeInteger(value.bigEndian)
+		return try self.writeInteger(value.bigEndian)
 	}
 
 	/// Write a little-endian representation of an integer value to the stream
 	func writeLittleEndian<T: FixedWidthInteger>(_ value: T) throws {
-		return try writeInteger(value.littleEndian)
+		return try self.writeInteger(value.littleEndian)
 	}
 
 	/// Write an integer to the stream using the specified endianness
-	func write<T: FixedWidthInteger>(_ value: T, isBigEndian: Bool = true) throws {
-		isBigEndian ? try writeBigEndian(value) : try writeLittleEndian(value)
+	func write<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws {
+		byteOrder == .bigEndian ? try self.writeBigEndian(value) : try self.writeLittleEndian(value)
 	}
 
 	/// Write the integer's bytes into a data object
@@ -126,74 +128,106 @@ public extension BytesWriter {
 
 public extension BytesWriter {
 
-	@inlinable func writeInt8Value(_ value: Int8) throws {
+	/// Write an Int8 value
+	/// - Parameter value: The value to write
+	@inlinable func writeInt8(_ value: Int8) throws {
 		try self.writeBigEndian(value)
 	}
-	@inlinable func writeInt16Value(_ value: Int16, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
-	}
-	@inlinable func writeInt32Value(_ value: Int32, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
-	}
-	@inlinable func writeInt64Value(_ value: Int64, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
+
+	@inlinable func writeInt16(_ value: Int16, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
 	}
 
-	@inlinable func writeUInt8Value(_ value: UInt8) throws {
+	@inlinable func writeInt32(_ value: Int32, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
+	}
+
+	@inlinable func writeInt64(_ value: Int64, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
+	}
+
+	@inlinable func writeUInt8(_ value: UInt8) throws {
 		try self.writeByte(value)
 	}
-	@inlinable func writeUInt16Value(_ value: UInt16, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
+
+	@inlinable func writeUInt16(_ value: UInt16, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
 	}
-	@inlinable func writeUInt32Value(_ value: UInt32, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
+
+	@inlinable func writeUInt32(_ value: UInt32, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
 	}
-	@inlinable func writeUInt64Value(_ value: UInt64, isBigEndian: Bool = true) throws {
-		try self.write(value, isBigEndian: isBigEndian)
+
+	@inlinable func writeUInt64(_ value: UInt64, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value, byteOrder)
 	}
 }
 
 public extension BytesWriter {
 	/// Write a float32 value to the stream using the IEEE 754 specification
-	@inlinable func writeFloat32(_ value: Float32, isBigEndian: Bool = true) throws {
-		try self.write(value.bitPattern, isBigEndian: true)
+	@inlinable func writeFloat32(_ value: Float32, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value.bitPattern, byteOrder)
 	}
 
 	/// Write a float64 (Double) value to the stream using the IEEE 754 specification
-	@inlinable func writeFloat64(_ value: Float64, isBigEndian: Bool = true) throws {
-		try self.write(value.bitPattern, isBigEndian: isBigEndian)
+	@inlinable func writeFloat64(_ value: Float64, _ byteOrder: BytesParser.Endianness) throws {
+		try self.write(value.bitPattern, byteOrder)
 	}
 }
 
 // MARK: - Strings
 
 public extension BytesWriter {
-	func writeAsciiNullTerminated(_ string: String) throws {
-		try self.writeAsciiNoTerminator(string)
-		try self.writeByte(0x00)
-	}
-
-	func writeAsciiNoTerminator(_ string: String) throws {
-		guard let data = string.data(using: .ascii) else {
+	/// Write a string with encoding
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	func writeByteString(_ string: String, encoding: String.Encoding) throws {
+		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
 		try self.writeData(data)
+	}
+
+	/// Write a null-terminated string with encoding
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	func writeByteStringNullTerminated(_ string: String, encoding: String.Encoding) throws {
+		try self.writeByteString(string, encoding: encoding)
+		try self.writeByte(0x00)
 	}
 }
 
 public extension BytesWriter {
-	/// Write a null terminated UTF8 string
-	func writeUTF8NullTerminated(_ string: String) throws {
-		try self.writeUTF8NoTerminator(string)
-		try self.writeByte(0x00)
-	}
-
-	/// Write a UTF8 string without a terminator
-	func writeUTF8NoTerminator(_ string: String) throws {
-		guard let data = string.data(using: .utf8) else {
+	/// Write a wide (2-byte) string without a terminator
+	func writeWide16String(_ string: String, encoding: String.Encoding) throws {
+		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
 		try self.writeData(data)
+	}
+
+	/// Write a wide (2-byte) string with a null terminator (0x00 0x00)
+	func writeWide16StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
+		try self.writeWide16String(string, encoding: encoding)
+		try self.writeBytes(terminator16)
+	}
+}
+
+public extension BytesWriter {
+	/// Write a super-wide (4-byte) string without a terminator
+	func writeWide32String(_ string: String, encoding: String.Encoding) throws {
+		guard let data = string.data(using: encoding) else {
+			throw WriterError.cannotConvertStringEncoding
+		}
+		try self.writeData(data)
+	}
+
+	/// Write a super-wide (4-byte) string with a terminator
+	func writeWide32StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
+		try self.writeWide32String(string, encoding: encoding)
+		try self.writeBytes(terminator32)
 	}
 }
 
