@@ -14,7 +14,7 @@ let magic14 = try parser.readBytes(4)
 let magic18 = try parser.readBytes(4)
 
 // Version is a little-endian Int32
-let version: Int32 = try parser.readLittleEndian()
+let version: Int32 = try parser.readInteger(.littleEndian)
 
 // Width and height are UInt8
 let width = Int(try parser.readByte())

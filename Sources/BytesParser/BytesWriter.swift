@@ -26,17 +26,17 @@ public class BytesWriter {
 	public enum WriterError: Error {
 		case cannotConvertStringEncoding
 		case cannotOpenOutputFile
-		case unableToWriteBytesToFile
+		case unableToWriteBytes
 		case notSupported
 		case noDataAvailable
 	}
 
-	internal let writer: OutputStream
+	internal let outputStream: OutputStream
 
 	/// Create a byte writer that writes to a Data() object
 	public init() throws {
-		self.writer = OutputStream(toMemory: ())
-		self.writer.open()
+		self.outputStream = OutputStream(toMemory: ())
+		self.outputStream.open()
 	}
 
 	/// Create a byte writer that writes to a file URL
@@ -45,16 +45,16 @@ public class BytesWriter {
 		guard let stream = OutputStream(toFileAtPath: fileURL.path, append: false) else {
 			throw BytesWriter.WriterError.cannotOpenOutputFile
 		}
-		self.writer = stream
+		self.outputStream = stream
 		stream.open()
 	}
 
 	/// Must be called when you've finished writing.
-	public func complete() { self.writer.close() }
+	public func complete() { self.outputStream.close() }
 
 	/// If the writer supports generating data, the data that was generated
 	public func data() throws -> Data {
-		guard let data = self.writer.property(forKey: .dataWrittenToMemoryStreamKey) as? Data else {
+		guard let data = self.outputStream.property(forKey: .dataWrittenToMemoryStreamKey) as? Data else {
 			throw BytesWriter.WriterError.noDataAvailable
 		}
 		return data
@@ -66,28 +66,37 @@ public class BytesWriter {
 public extension BytesWriter {
 	/// Write the contents of a Data object to the output
 	func writeData(_ data: Data) throws {
-		let writtenCount = try data.withUnsafeBytes {
-			guard let pointer = $0.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-				throw BytesWriter.WriterError.unableToWriteBytesToFile
-			}
-			return writer.write(pointer, maxLength: data.count)
-		}
-		guard writtenCount == data.count else {
-			throw BytesWriter.WriterError.unableToWriteBytesToFile
-		}
+		try data.withUnsafeBytes { try self.writeBuffer($0, byteCount: data.count) }
 	}
 
 	/// Write an array of bytes to the output
 	func writeBytes(_ bytes: [UInt8]) throws {
-		let writtenCount = self.writer.write(bytes, maxLength: bytes.count)
+		let writtenCount = self.outputStream.write(bytes, maxLength: bytes.count)
 		guard writtenCount == bytes.count else {
-			throw BytesWriter.WriterError.unableToWriteBytesToFile
+			throw BytesWriter.WriterError.unableToWriteBytes
 		}
 	}
 
 	/// Write a single byte to the output
 	@inlinable func writeByte(_ byte: UInt8) throws {
 		try self.writeBytes([byte])
+	}
+}
+
+private extension BytesWriter {
+	/// Write the contents of a raw buffer pointer to the outputstream
+	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws {
+		guard let base = buffer.baseAddress else {
+			throw BytesWriter.WriterError.unableToWriteBytes
+		}
+
+		// Map the buffer contents to a UInt8 memory buffer
+		try base.withMemoryRebound(to: UInt8.self, capacity: byteCount) { pointer in
+			let writtenCount = outputStream.write(pointer, maxLength: byteCount)
+			guard writtenCount == byteCount else {
+				throw BytesWriter.WriterError.unableToWriteBytes
+			}
+		}
 	}
 }
 
@@ -103,47 +112,35 @@ public extension BytesWriter {
 // MARK: - Integers and floats
 
 public extension BytesWriter {
-	/// Write a big-endian representation of an integer value to the stream
-	func writeBigEndian<T: FixedWidthInteger>(_ value: T) throws {
-		return try self.writeInteger(value.bigEndian)
-	}
-
-	/// Write a little-endian representation of an integer value to the stream
-	func writeLittleEndian<T: FixedWidthInteger>(_ value: T) throws {
-		return try self.writeInteger(value.littleEndian)
-	}
-
 	/// Write an integer to the stream using the specified endianness
-	func write<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws {
-		byteOrder == .bigEndian ? try self.writeBigEndian(value) : try self.writeLittleEndian(value)
-	}
+	func writeInteger<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws {
+		// Map the value to the correct endianness...
+		let mapped = (byteOrder == .bigEndian) ? value.bigEndian : value.littleEndian
 
-	/// Write the integer's bytes into a data object
-	private func writeInteger<T: FixedWidthInteger>(_ value: T) throws {
-		return try withUnsafeBytes(of: value) {
-			try self.writeData(Data($0))
+		// ... then write out the raw bytes
+		try withUnsafeBytes(of: mapped) { pointer in
+			try self.writeBuffer(pointer, byteCount: MemoryLayout<T>.size)
 		}
 	}
 }
 
 public extension BytesWriter {
-
 	/// Write an Int8 value
 	/// - Parameter value: The value to write
 	@inlinable func writeInt8(_ value: Int8) throws {
-		try self.writeBigEndian(value)
+		try self.writeInteger(value, .bigEndian)
 	}
 
 	@inlinable func writeInt16(_ value: Int16, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 
 	@inlinable func writeInt32(_ value: Int32, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 
 	@inlinable func writeInt64(_ value: Int64, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 
 	@inlinable func writeUInt8(_ value: UInt8) throws {
@@ -151,27 +148,27 @@ public extension BytesWriter {
 	}
 
 	@inlinable func writeUInt16(_ value: UInt16, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 
 	@inlinable func writeUInt32(_ value: UInt32, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 
 	@inlinable func writeUInt64(_ value: UInt64, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value, byteOrder)
+		try self.writeInteger(value, byteOrder)
 	}
 }
 
 public extension BytesWriter {
 	/// Write a float32 value to the stream using the IEEE 754 specification
 	@inlinable func writeFloat32(_ value: Float32, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value.bitPattern, byteOrder)
+		try self.writeInteger(value.bitPattern, byteOrder)
 	}
 
 	/// Write a float64 (Double) value to the stream using the IEEE 754 specification
 	@inlinable func writeFloat64(_ value: Float64, _ byteOrder: BytesParser.Endianness) throws {
-		try self.write(value.bitPattern, byteOrder)
+		try self.writeInteger(value.bitPattern, byteOrder)
 	}
 }
 

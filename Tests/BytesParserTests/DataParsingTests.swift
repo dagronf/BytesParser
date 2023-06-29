@@ -9,14 +9,12 @@ final class ByteIterableTests: XCTestCase {
 			let data = BytesParser(data: d)
 			let r = try data.readUpToNextNullByte()
 			XCTAssertEqual(r, d)
-			Swift.print(r)
 		}
 
 		do {
 			let data = BytesParser(data: d)
 			let r = try data.readUpToNextInstanceOfByte(byte: 0x20)
 			XCTAssertEqual(r, Data([0x66, 0x69, 0x73, 0x68, 0x20]))
-			Swift.print(r)
 		}
 	}
 
