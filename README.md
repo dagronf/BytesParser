@@ -1,6 +1,6 @@
 # BytesParser
 
-A byte-oriented parser for data.
+A byte-oriented parser/writer
 
 Useful for extracting formatted values from raw data
 
