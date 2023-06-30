@@ -26,6 +26,9 @@ func withTemporaryFile<ReturnType>(_ fileExtension: String? = nil, _ block: (URL
 		create: true
 	)
 	.appendingPathComponent(tempFilename)
+
+	Swift.print("Using temporary file: \(tempURL)")
+
 	return try block(tempURL)
 }
 

@@ -13,7 +13,7 @@ final class DataWritingTests: XCTestCase {
 	}
 
 	func testBasic() throws {
-		let data = try BytesWriter.generate { writer in
+		let data = try BytesWriter.assemble { writer in
 			try writer.writeByte(0x20)
 			try writer.writeByte(0x40)
 			try writer.writeByte(0x60)
@@ -34,7 +34,7 @@ final class DataWritingTests: XCTestCase {
 	}
 
 	func testInt8() throws {
-		let data = try BytesWriter.generate { writer in
+		let data = try BytesWriter.assemble { writer in
 			try writer.writeInt8(-10)
 			try writer.writeInt8(10)
 		}
@@ -53,7 +53,7 @@ final class DataWritingTests: XCTestCase {
 
 	func testNumbers() throws {
 
-		let out = try BytesWriter.generate { writer in
+		let out = try BytesWriter.assemble { writer in
 			try writer.writeUInt16(101, .littleEndian)
 			try writer.writeUInt32(77688, .bigEndian)
 			try writer.writeUInt16(2987, .littleEndian)
@@ -79,5 +79,48 @@ final class DataWritingTests: XCTestCase {
 
 		let v4: UInt8 = try p.readByte()
 		XCTAssertEqual(254, v4)
+	}
+
+	func testWriteToFile() throws {
+
+		try withTemporaryFile { fileURL in
+
+			let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
+
+			// Generate the file content
+			try BytesWriter.assemble(fileURL: fileURL) { writer in
+				try writer.writeUInt16(101, .littleEndian)
+				try writer.writeUInt32(77688, .bigEndian)
+				try writer.writeUInt16(2987, .littleEndian)
+				try writer.writeByteString("abcd", encoding: .ascii)
+				try writer.writeBool(true)
+				try writer.writeByteStringNullTerminated(message, encoding: .utf8)
+				try writer.writeFloat64(12345.12345, .bigEndian)
+				try writer.writeBool(false)
+				try writer.writeUInt8(254)
+			}
+
+			// Now, try to read it back in
+			try BytesParser.parse(fileURL: fileURL) { parser in
+				let v1: UInt16 = try parser.readInteger(.littleEndian)
+				XCTAssertEqual(101, v1)
+				let v2: UInt32 = try parser.readInteger(.bigEndian)
+				XCTAssertEqual(77688, v2)
+				let v3: UInt16 = try parser.readInteger(.littleEndian)
+				XCTAssertEqual(2987, v3)
+				XCTAssertEqual("abcd", try parser.readString(length: 4, encoding: .ascii))
+
+				XCTAssertEqual(true, try parser.readBool())
+
+				let msg = try parser.readStringNullTerminated(encoding: .utf8)
+				XCTAssertEqual(message, msg)
+
+				XCTAssertEqual(12345.12345, try parser.readFloat64(.bigEndian))
+				XCTAssertEqual(false, try parser.readBool())
+
+				let v4: UInt8 = try parser.readByte()
+				XCTAssertEqual(254, v4)
+			}
+		}
 	}
 }

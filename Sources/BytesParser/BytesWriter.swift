@@ -234,7 +234,7 @@ public extension BytesWriter {
 	/// Generate a Data object
 	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the Data object
 	/// - Returns: A data object
-	static func generate(_ block: (BytesWriter) throws -> Void) throws -> Data {
+	static func assemble(_ block: (BytesWriter) throws -> Void) throws -> Data {
 		let writer = try BytesWriter()
 		do {
 			try block(writer)
@@ -248,7 +248,7 @@ public extension BytesWriter {
 
 	/// Generate a file
 	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the file object
-	static func generate(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
+	static func assemble(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
 		let writer = try BytesWriter(fileURL: fileURL)
 		do {
 			try block(writer)

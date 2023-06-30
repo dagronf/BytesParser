@@ -106,7 +106,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(isBigEndian: false)
+			let str = try data.readUTF16NullTerminatedString(.littleEndian)
 			XCTAssertEqual("ab", str)
 
 			let b = try data.readByte()
@@ -118,7 +118,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x00, 0x61, 0x00, 0x62, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(isBigEndian: true)
+			let str = try data.readUTF16NullTerminatedString(.bigEndian)
 			XCTAssertEqual("ab", str)
 
 			let b = try data.readByte()
@@ -128,7 +128,7 @@ final class ByteIterableTests: XCTestCase {
 
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16NullTerminatedString(isBigEndian: true)
+				let str = try parser.readUTF16NullTerminatedString(.bigEndian)
 				XCTAssertEqual("ab", str)
 				let b = try parser.readByte()
 				XCTAssertEqual(0x80, b)
@@ -139,7 +139,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16String(length: 2, isBigEndian: false)
+			let str = try data.readUTF16String(.littleEndian, length: 2)
 			XCTAssertEqual("ab", str)
 			XCTAssertTrue(data.hasMoreData)
 			XCTAssertEqual(0x00, try data.readByte())
@@ -151,7 +151,7 @@ final class ByteIterableTests: XCTestCase {
 			// Try the same with an input stream
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16String(length: 2, isBigEndian: false)
+				let str = try parser.readUTF16String(.littleEndian, length: 2)
 				XCTAssertEqual("ab", str)
 				XCTAssertTrue(parser.hasMoreData)
 				XCTAssertEqual(0x00, try parser.readByte())
@@ -191,7 +191,7 @@ final class ByteIterableTests: XCTestCase {
 	}
 
 	func testReadIntegersAndStuff() throws {
-		let data = try BytesWriter.generate { writer in
+		let data = try BytesWriter.assemble { writer in
 			try writer.writeInt16(10101, .bigEndian)
 			try writer.writeUInt16(40000, .bigEndian)
 			try writer.writeInt16(-10101, .littleEndian)
@@ -215,7 +215,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func test32BitString() throws {
 		let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
-		let data = try BytesWriter.generate { writer in
+		let data = try BytesWriter.assemble { writer in
 			try writer.writeWide32String(message, encoding: .utf32BigEndian)
 			try writer.writeByte(0x78)
 			try writer.writeWide32String(message, encoding: .utf32LittleEndian)
@@ -231,11 +231,12 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadRealCrosswordFile() throws {
 		// Parse a binary crossword file
+		// Crossword integer values are all little-endian
 
 		let url = Bundle.module.url(forResource: "May0612", withExtension: "puz")!
 
 		try BytesParser.parse(fileURL: url) { parser in
-			let /*checksum*/ _: Int16 = try parser.readInteger(.littleEndian)
+			let /*checksum*/ _: UInt16 = try parser.readInteger(.littleEndian)
 			let magic = try parser.readString(length: 12, encoding: .ascii, lengthIncludesTerminator: true)
 			XCTAssertEqual(magic, "ACROSS&DOWN")
 
@@ -294,7 +295,7 @@ final class ByteIterableTests: XCTestCase {
 		func readPascalStyleWideString(_ parser: BytesParser) throws -> String {
 			// The length of title
 			let titleLength = try parser.readUInt32(.bigEndian)
-			return try parser.readUTF16String(length: Int(titleLength))
+			return try parser.readUTF16String(.bigEndian, length: Int(titleLength))
 		}
 
 		try BytesParser.parse(fileURL: url) { parser in

@@ -277,15 +277,20 @@ public extension BytesParser {
 	}
 
 	/// Read `length` count of 2-byte characters as a UTF16 string
-	@inlinable func readUTF16String(length: Int, isBigEndian: Bool = true) throws -> String {
-		try self.readWide16String(length: length, encoding: isBigEndian ? .utf16BigEndian : .utf16LittleEndian)
+	@inlinable func readUTF16String(_ byteOrder: Endianness, length: Int) throws -> String {
+		try self.readWide16String(
+			length: length,
+			encoding: (byteOrder == .bigEndian) ? .utf16BigEndian : .utf16LittleEndian
+		)
 	}
 
 	/// Read a wide16 string up to the string's null terminator
 	/// - Parameter encoding: The expected string encoding
 	/// - Returns: A string
-	@inlinable func readUTF16NullTerminatedString(isBigEndian: Bool = true) throws -> String {
-		try self.readWide16StringNullTerminated(encoding: isBigEndian ? .utf16BigEndian : .utf16LittleEndian)
+	@inlinable func readUTF16NullTerminatedString(_ byteOrder: Endianness) throws -> String {
+		try self.readWide16StringNullTerminated(
+			encoding: (byteOrder == .bigEndian) ? .utf16BigEndian : .utf16LittleEndian
+		)
 	}
 }
 
