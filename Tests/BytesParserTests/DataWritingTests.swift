@@ -129,4 +129,71 @@ final class DataWritingTests: XCTestCase {
 			}
 		}
 	}
+
+	func testPaddingAddNoPadding() throws {
+		// Shouldn't add any padding
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeUInt32(22345, .bigEndian)
+			try writer.padToFourByteBoundary()
+		}
+
+		XCTAssertEqual(4, data.count)
+
+		try BytesParser.parse(data: data) { parser in
+			XCTAssertEqual(22345, try parser.readUInt32(.bigEndian))
+			XCTAssertThrowsError(try parser.readByte())
+		}
+	}
+
+	func testPadding3BytesExpected() throws {
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeBool(true)
+			try writer.padToFourByteBoundary(using: 0xff)
+		}
+
+		XCTAssertEqual(4, data.count)
+
+		try BytesParser.parse(data: data) { parser in
+			XCTAssertEqual(true, try parser.readBool())
+			XCTAssertEqual(0xff, try parser.readByte())
+			XCTAssertEqual(0xff, try parser.readByte())
+			XCTAssertEqual(0xff, try parser.readByte())
+			XCTAssertThrowsError(try parser.readByte())
+		}
+	}
+
+	func testPadding2BytesExpected() throws {
+		// Generate the file content
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeUInt16(22345, .bigEndian)
+			try writer.padToFourByteBoundary()
+		}
+
+		XCTAssertEqual(4, data.count)
+
+		try BytesParser.parse(data: data) { parser in
+			XCTAssertEqual(22345, try parser.readInt16(.bigEndian))
+			XCTAssertEqual(0x0, try parser.readByte())
+			XCTAssertEqual(0x0, try parser.readByte())
+			XCTAssertThrowsError(try parser.readByte())
+		}
+	}
+
+	func testPadding1BytesExpected() throws {
+		// Generate the file content
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeUInt16(22345, .bigEndian)
+			try writer.writeByte(0xcd)
+			try writer.padToFourByteBoundary()
+		}
+
+		XCTAssertEqual(4, data.count)
+
+		try BytesParser.parse(data: data) { parser in
+			XCTAssertEqual(22345, try parser.readInt16(.bigEndian))
+			XCTAssertEqual(0xcd, try parser.readByte())
+			XCTAssertEqual(0x0, try parser.readByte())
+			XCTAssertThrowsError(try parser.readByte())
+		}
+	}
 }

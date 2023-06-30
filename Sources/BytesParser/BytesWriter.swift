@@ -233,6 +233,31 @@ public extension BytesWriter {
 	}
 }
 
+public extension BytesWriter {
+	/// Pad the output to an N byte boundary
+	/// - Parameter
+	///   - byteBoundary: The boundary size to use when adding padding bytes
+	///   - byte: The padding byte to use, or null if not specified
+	func padToNByteBoundary(byteBoundary: Int, using byte: UInt8 = 0x00) throws {
+		let amount = self.count % byteBoundary
+		if amount == 0 { return }
+		let data = Array<UInt8>(repeating: byte, count: byteBoundary - amount)
+		try self.writeBytes(data)
+	}
+
+	/// Pad the output to an four byte boundary
+	/// - Parameter byte: The padding byte to use, or null if not specified
+	@inlinable func padToFourByteBoundary(using byte: UInt8 = 0x00) throws {
+		try self.padToNByteBoundary(byteBoundary: 4, using: byte)
+	}
+
+	/// Pad the output to an eight byte boundary
+	/// - Parameter byte: The padding byte to use, or null if not specified
+	func padToEightByteBoundary(using byte: UInt8 = 0x00) throws {
+		try self.padToNByteBoundary(byteBoundary: 8, using: byte)
+	}
+}
+
 // MARK: - Convenience writers
 
 public extension BytesWriter {

@@ -13,6 +13,7 @@ Supports :-
 * different string encodings, including multi-byte encodings like UInt32
 * explicit string null-termination handling
 * explicit endian handling for appropriate types (eg. `Int32`) so no unintential byte swaps.
+* padding to byte boundaries
 
 ## Reading
 
