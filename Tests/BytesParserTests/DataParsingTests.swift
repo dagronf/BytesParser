@@ -202,6 +202,8 @@ final class ByteIterableTests: XCTestCase {
 			try writer.writeBool(false)
 		}
 
+		XCTAssertEqual(18, data.count)
+
 		try BytesParser.parse(data: data) { parser in
 			XCTAssertEqual(10101, try parser.readInt16(.bigEndian))
 			XCTAssertEqual(40000, try parser.readUInt16(.bigEndian))
@@ -215,11 +217,14 @@ final class ByteIterableTests: XCTestCase {
 
 	func test32BitString() throws {
 		let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
+		let msgcount = message.count
 		let data = try BytesWriter.assemble { writer in
 			try writer.writeWide32String(message, encoding: .utf32BigEndian)
 			try writer.writeByte(0x78)
 			try writer.writeWide32String(message, encoding: .utf32LittleEndian)
 		}
+		XCTAssertEqual((msgcount*4)*2 + 1, data.count)
+
 		try BytesParser.parse(data: data) { parser in
 			let str1 = try parser.readWide32String(length: message.count, encoding: .utf32BigEndian)
 			XCTAssertEqual(message, str1)
@@ -353,18 +358,5 @@ final class ByteIterableTests: XCTestCase {
 			// Paste the end of file -- should throw an error
 			XCTAssertThrowsError(try parser.readByte())
 		}
-	}
-}
-
-
-extension Data {
-	struct HexEncodingOptions: OptionSet {
-		let rawValue: Int
-		static let upperCase = HexEncodingOptions(rawValue: 1 << 0)
-	}
-
-	func hexEncodedString(options: HexEncodingOptions = []) -> String {
-		let format = options.contains(.upperCase) ? "%02hhX" : "%02hhx"
-		return self.map { String(format: format, $0) }.joined()
 	}
 }

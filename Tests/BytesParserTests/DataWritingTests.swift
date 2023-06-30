@@ -19,6 +19,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeByte(0x60)
 			try writer.writeByte(0x80)
 		}
+		XCTAssertEqual(4, data.count)
 		let raw: [UInt8] = data.prefix(4).map { $0 }
 		XCTAssertEqual([0x20, 0x40, 0x60, 0x80], raw)
 	}
@@ -28,6 +29,7 @@ final class DataWritingTests: XCTestCase {
 		let data: [UInt8] = [0x20, 0x40, 0x60, 0x80]
 		try mem.writeBytes(data)
 		mem.complete()
+		XCTAssertEqual(4, data.count)
 		let data2 = try mem.data()
 		let raw: [UInt8] = data2.prefix(4).map { $0 }
 		XCTAssertEqual([0x20, 0x40, 0x60, 0x80], raw)
@@ -38,6 +40,8 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeInt8(-10)
 			try writer.writeInt8(10)
 		}
+
+		XCTAssertEqual(2, data.count)
 
 		try BytesParser.parse(data: data) { parser in
 			// Map byte to a Int8
@@ -54,15 +58,17 @@ final class DataWritingTests: XCTestCase {
 	func testNumbers() throws {
 
 		let out = try BytesWriter.assemble { writer in
-			try writer.writeUInt16(101, .littleEndian)
-			try writer.writeUInt32(77688, .bigEndian)
-			try writer.writeUInt16(2987, .littleEndian)
-			try writer.writeByteString("abcd", encoding: .ascii)
-			try writer.writeBool(true)
-			try writer.writeFloat64(12345.12345, .bigEndian)
-			try writer.writeBool(false)
-			try writer.writeUInt8(254)
+			try writer.writeUInt16(101, .littleEndian) // 2
+			try writer.writeUInt32(77688, .bigEndian)  // 4
+			try writer.writeUInt16(2987, .littleEndian)  // 2
+			try writer.writeByteString("abcd", encoding: .ascii) // 4
+			try writer.writeBool(true) // 1
+			try writer.writeFloat64(12345.12345, .bigEndian) // 8
+			try writer.writeBool(false) // 1
+			try writer.writeUInt8(254) // 1
 		}
+
+		XCTAssertEqual(23, out.count)
 
 		let p = BytesParser(data: out)
 		let v1: UInt16 = try p.readInteger(.littleEndian)

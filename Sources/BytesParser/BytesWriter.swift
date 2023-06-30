@@ -33,6 +33,9 @@ public class BytesWriter {
 
 	internal let outputStream: OutputStream
 
+	/// The number of bytes currently written to the output
+	public private(set) var count: Int = 0
+
 	/// Create a byte writer that writes to a Data() object
 	public init() throws {
 		self.outputStream = OutputStream(toMemory: ())
@@ -75,6 +78,7 @@ public extension BytesWriter {
 		guard writtenCount == bytes.count else {
 			throw BytesWriter.WriterError.unableToWriteBytes
 		}
+		self.count += bytes.count
 	}
 
 	/// Write a single byte to the output
@@ -92,11 +96,12 @@ private extension BytesWriter {
 
 		// Map the buffer contents to a UInt8 memory buffer
 		try base.withMemoryRebound(to: UInt8.self, capacity: byteCount) { pointer in
-			let writtenCount = outputStream.write(pointer, maxLength: byteCount)
+			let writtenCount = self.outputStream.write(pointer, maxLength: byteCount)
 			guard writtenCount == byteCount else {
 				throw BytesWriter.WriterError.unableToWriteBytes
 			}
 		}
+		self.count += byteCount
 	}
 }
 
