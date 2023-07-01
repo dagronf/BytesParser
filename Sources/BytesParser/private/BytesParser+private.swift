@@ -28,6 +28,7 @@ internal extension BytesParser {
 		self.readBuffer.requireSize(1)
 		let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
 		guard readCount == 1 else { throw BytesParser.ParseError.endOfData }
+		self.offset += 1
 		return self.readBuffer.buffer.pointee
 	}
 
@@ -63,7 +64,7 @@ internal extension BytesParser {
 				read += readCount
 			}
 		}
-
+		self.offset += count
 		return result
 	}
 
@@ -81,6 +82,7 @@ internal extension BytesParser {
 				return result
 			}
 			result += Data(bytes: self.readBuffer.buffer, count: 1)
+			self.offset += 1
 			if self.readBuffer.buffer[0] == byte {
 				return result
 			}

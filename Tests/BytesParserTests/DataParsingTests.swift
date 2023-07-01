@@ -9,12 +9,14 @@ final class ByteIterableTests: XCTestCase {
 			let data = BytesParser(data: d)
 			let r = try data.readUpToNextNullByte()
 			XCTAssertEqual(r, d)
+			XCTAssertEqual(15, data.offset)
 		}
 
 		do {
 			let data = BytesParser(data: d)
 			let r = try data.readUpToNextInstanceOfByte(byte: 0x20)
 			XCTAssertEqual(r, Data([0x66, 0x69, 0x73, 0x68, 0x20]))
+			XCTAssertEqual(5, data.offset)
 		}
 	}
 
@@ -108,6 +110,7 @@ final class ByteIterableTests: XCTestCase {
 			let data = BytesParser(content: d)
 			let str = try data.readUTF16NullTerminatedString(.littleEndian)
 			XCTAssertEqual("ab", str)
+			XCTAssertEqual(6, data.offset)
 
 			let b = try data.readByte()
 			XCTAssertEqual(0x80, b)
@@ -357,6 +360,68 @@ final class ByteIterableTests: XCTestCase {
 
 			// Paste the end of file -- should throw an error
 			XCTAssertThrowsError(try parser.readByte())
+		}
+	}
+
+	func testParseMPLS() throws {
+		// https://en.wikibooks.org/wiki/User:Bdinfo/mpls
+		let url = Bundle.module.url(forResource: "00000", withExtension: "mpls")!
+
+		try BytesParser.parse(fileURL: url) { parser in
+			let magic = try parser.readString(length: 4, encoding: .ascii)
+			XCTAssertEqual("MPLS", magic)
+			let version = try parser.readString(length: 4, encoding: .ascii)
+			XCTAssertEqual("0200", version)
+
+			let playlistStartOffset = try parser.readUInt32(.bigEndian)
+			XCTAssertEqual(58, playlistStartOffset)
+			let markStartOffset = try parser.readUInt32(.bigEndian)
+			XCTAssertEqual(254, markStartOffset)
+			let extensionStartOffset = try parser.readUInt32(.bigEndian)
+			XCTAssertEqual(0, extensionStartOffset)
+
+			let unused1 = try parser.readBytes(count: 20)
+			XCTAssertEqual(Array(repeating: 0, count: 20), unused1)
+
+			let applicationInfoOffset = try parser.readUInt32(.bigEndian)
+			XCTAssertEqual(14, applicationInfoOffset)
+
+			XCTAssertEqual(0, try parser.readByte())
+
+			let playbackType = try parser.readByte()
+			XCTAssertEqual(1, playbackType)
+
+			let playbackCount = try parser.readUInt16(.bigEndian)
+			XCTAssertEqual(0, playbackCount)
+
+			let unused2 = try parser.readBytes(count: 8)
+			XCTAssertEqual(Array(repeating: 0, count: 8), unused2)
+
+			let flags = try parser.readByte()
+			XCTAssertEqual(64, flags)
+
+			XCTAssertEqual(0, try parser.readByte())
+			
+			do {
+				let offset = Int(playlistStartOffset) - parser.offset
+				if offset > 0 {
+					_ = try parser.readBytes(count: offset)
+				}
+
+				let playlistLength = try parser.readUInt32(.bigEndian)
+				XCTAssertEqual(192, playlistLength)
+
+				let unused3 = try parser.readBytes(count: 2)
+				XCTAssertEqual(Array(repeating: 0, count: 2), unused3)
+
+				let playItemCount = try parser.readUInt16(.bigEndian)
+				XCTAssertEqual(1, playItemCount)
+
+				let subpathCount = try parser.readUInt16(.bigEndian)
+				XCTAssertEqual(1, subpathCount)
+
+				// ...
+			}
 		}
 	}
 }

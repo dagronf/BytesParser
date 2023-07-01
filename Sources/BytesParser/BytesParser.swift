@@ -39,6 +39,9 @@ public class BytesParser {
 	/// Is there more data to read?
 	public var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
 
+	/// The offset of the reader into the source
+	public internal(set) var offset: Int = 0
+
 	/// Create a byte parser from a data object
 	public init(data: Data) {
 		self.inputStream = InputStream(data: data)
