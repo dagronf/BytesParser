@@ -233,6 +233,8 @@ public extension BytesWriter {
 	}
 }
 
+// MARK: - Padding
+
 public extension BytesWriter {
 	/// Pad the output to an N byte boundary
 	/// - Parameter
@@ -253,7 +255,7 @@ public extension BytesWriter {
 
 	/// Pad the output to an eight byte boundary
 	/// - Parameter byte: The padding byte to use, or null if not specified
-	func padToEightByteBoundary(using byte: UInt8 = 0x00) throws {
+	@inlinable func padToEightByteBoundary(using byte: UInt8 = 0x00) throws {
 		try self.padToNByteBoundary(byteBoundary: 8, using: byte)
 	}
 }
