@@ -82,50 +82,21 @@ public class BytesParser {
 // MARK: Bytes and Data
 
 public extension BytesParser {
-	/// Read a single byte
-	func readByte() throws -> UInt8 {
-		guard let data = try self._next(1).first else {
-			throw ParseError.endOfData
-		}
-		return data
-	}
-
-	/// Read the next `count` bytes into a Data object
-	/// - Parameter count: The number of bytes to read
-	/// - Returns: A data object containing the read bytes
-	func readData(count: Int) throws -> Data {
-		try self._next(count)
-	}
-
 	/// Read the next `count` bytes into a byte array
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: An array of bytes
-	func readBytes(count: Int) throws -> [UInt8] {
-		try self.readData(count: count).map { $0 }
-	}
-
-	/// Read all of the remaining data in the source.
-	///
-	/// After this call, any further reads will throw (end of data)
-	func readAllRemainingData() throws -> Data {
-		try self._readToEndOfStream()
+	@inlinable func readBytes(count: Int) throws -> [UInt8] {
+		try Array(self.readData(count: count))
 	}
 }
 
 // MARK: Up to next byte instance
 
 public extension BytesParser {
-	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
-	/// - Parameter byte: The byte to use as the terminator
-	/// - Returns: A data object containing the read bytes
-	func readUpToNextInstanceOfByte(byte: UInt8) throws -> Data {
-		try self._nextUpToIncluding(byte)
-	}
-
 	/// Read up to **and including** the next instance of a **single** null byte (0x00)
 	/// - Returns: A data object containing the read bytes
-	func readUpToNextNullByte() throws -> Data {
-		try self._nextUpToIncluding(0x00)
+	@inlinable func readUpToNextNullByte() throws -> Data {
+		try self.readUpToNextInstanceOfByte(0x00)
 	}
 }
 
@@ -135,18 +106,28 @@ public extension BytesParser {
 	/// Read a 'bool' value byte from the stream
 	///
 	/// `0x00` -> `false`, anything else -> `true`
-	func readBool() throws -> Bool {
-		try (Int(self.readByte()) == 0x0) ? false : true
+	@inlinable func readBool() throws -> Bool {
+		try self.readByte() != 0x00
 	}
 	
 	/// Read an integer value
 	/// - Parameter byteOrder: Expected endianness for the integer
 	/// - Returns: An integer value
+	///
+	/// See the discussion [here](https://web.archive.org/web/2/https://forums.swift.org/t/convert-uint8-to-int/30117/9)
 	func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
 		let typeSize = MemoryLayout<T>.size
-		let intData = try self._next(typeSize)
-		let rawInteger = intData.withUnsafeBytes { $0.load(as: T.self) }
-		return byteOrder == .bigEndian ? rawInteger.bigEndian : rawInteger.littleEndian
+		let intData = try self.readData(count: typeSize)
+		if byteOrder == .bigEndian {
+			return intData.reduce(0) { soFar, byte in
+				return soFar << 8 | T(byte)
+			}
+		}
+		else {
+			return intData.reversed().reduce(0) { soFar, byte in
+				return soFar << 8 | T(byte)
+			}
+		}
 	}
 }
 
@@ -249,7 +230,7 @@ public extension BytesParser {
 	///
 	/// NOTE: Slower as we have to read byte-by-byte. Also less safe than the length specific version!
 	func readStringNullTerminated(_ encoding: String.Encoding) throws -> String {
-		var rawContent = try readUpToNextInstanceOfByte(byte: 0x00)
+		var rawContent = try readUpToNextInstanceOfByte(0x00)
 		if rawContent.last == 0x00 {
 			// Remove the last terminator character
 			// Note that the last character is _not_ guaranteed to be nil IF we hit the EOD
@@ -306,7 +287,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	func readWide16String(_ encoding: String.Encoding, length: Int) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try self._next(length * 2)
+		let rawContent = try self.readData(count: length * 2)
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
@@ -366,7 +347,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	func readWide32String(_ encoding: String.Encoding, length: Int) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try self._next(length * 4)
+		let rawContent = try self.readData(count: length * 4)
 		guard let str = String(data: rawContent, encoding: encoding) else {
 			throw ParseError.invalidStringEncoding
 		}

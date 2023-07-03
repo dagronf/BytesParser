@@ -14,7 +14,7 @@ final class ByteIterableTests: XCTestCase {
 
 		do {
 			let data = BytesParser(data: d)
-			let r = try data.readUpToNextInstanceOfByte(byte: 0x20)
+			let r = try data.readUpToNextInstanceOfByte(0x20)
 			XCTAssertEqual(r, Data([0x66, 0x69, 0x73, 0x68, 0x20]))
 			XCTAssertEqual(5, data.offset)
 		}
