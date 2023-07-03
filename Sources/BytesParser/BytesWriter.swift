@@ -102,12 +102,9 @@ private extension BytesWriter {
 			throw BytesWriter.WriterError.emptyBuffer
 		}
 
-		var toWrite = byteCount
-		while toWrite > 0 {
-			let written = self.outputStream.write(buffer, maxLength: byteCount)
-			guard written > 0 else { throw BytesWriter.WriterError.unableToWriteBytes }
-			toWrite -= written
-		}
+		let ptr = buffer.assumingMemoryBound(to: UInt8.self)
+		let written = self.outputStream.write(ptr, maxLength: byteCount)
+		guard written == byteCount else { throw BytesWriter.WriterError.unableToWriteBytes }
 		self.count += byteCount
 	}
 }
