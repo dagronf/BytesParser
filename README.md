@@ -15,6 +15,8 @@ Supports :-
 * explicit endian handling for appropriate types (eg. `Int32`) so no unintential byte swaps.
 * padding to byte boundaries
 
+[Online Documentation](https://swiftpackageindex.com/dagronf/BytesParser/0.2.3/documentation/bytesparser)
+
 ## Reading
 
 The `BytesParser` class type provides the basic mechanism for reading and extracting useful information

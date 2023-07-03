@@ -24,28 +24,28 @@ final class ByteIterableTests: XCTestCase {
 		let d: [UInt8] = [0x66,0x69,0x73,0x68,0x00,0x61,0x6E,0x64,0x00]
 
 		try BytesParser.parse(bytes: d) { parser in
-			let str1 = try parser.readString(length: 5, encoding: .ascii, lengthIncludesTerminator: true)
+			let str1 = try parser.readString(.ascii, length: 5, lengthIncludesTerminator: true)
 			XCTAssertEqual(str1, "fish")
-			let str2 = try parser.readString(length: 4, encoding: .ascii, lengthIncludesTerminator: true)
+			let str2 = try parser.readString(.ascii, length: 4, lengthIncludesTerminator: true)
 			XCTAssertEqual(str2, "and")
 			XCTAssertThrowsError(try parser.readByte())
 		}
 
 		do {
 			let data = BytesParser(content: d)
-			let str1 = try data.readString(length: 5, encoding: .ascii, lengthIncludesTerminator: true)
+			let str1 = try data.readString(.ascii, length: 5, lengthIncludesTerminator: true)
 			XCTAssertEqual(str1, "fish")
-			let str2 = try data.readString(length: 4, encoding: .ascii, lengthIncludesTerminator: true)
+			let str2 = try data.readString(.ascii, length: 4, lengthIncludesTerminator: true)
 			XCTAssertEqual(str2, "and")
 			XCTAssertThrowsError(try data.readByte())
 		}
 
 		do {
 			let data = BytesParser(content: d)
-			let str1 = try data.readString(length: 4, encoding: .ascii, lengthIncludesTerminator: false)
+			let str1 = try data.readString(.ascii, length: 4, lengthIncludesTerminator: false)
 			XCTAssertEqual(str1, "fish")
 			XCTAssertEqual(0x00, try data.readByte())
-			let str2 = try data.readString(length: 3, encoding: .ascii, lengthIncludesTerminator: false)
+			let str2 = try data.readString(.ascii, length: 3, lengthIncludesTerminator: false)
 			XCTAssertEqual(str2, "and")
 			XCTAssertEqual(0x00, try data.readByte())
 			XCTAssertThrowsError(try data.readByte())
@@ -76,10 +76,10 @@ final class ByteIterableTests: XCTestCase {
 		// fish and\0chips
 		let d: [UInt8] = [0x66,0x69,0x73,0x68,0x20,0x61,0x6E,0x64,0x00,0x63,0x68,0x69,0x70,0x73,0x00,0x99]
 		let data = BytesParser(content: d)
-		let str1 = try data.readStringNullTerminated(encoding: .ascii)
+		let str1 = try data.readStringNullTerminated(.ascii)
 		XCTAssertEqual("fish and", str1)
 
-		let str2 = try data.readStringNullTerminated(encoding: .ascii)
+		let str2 = try data.readStringASCIINullTerminated()
 		XCTAssertEqual("chips", str2)
 
 		XCTAssertTrue(data.hasMoreData)
@@ -90,10 +90,10 @@ final class ByteIterableTests: XCTestCase {
 
 		try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 			try BytesParser.parse(inputStream: inputStream) { parser in
-				let str1 = try parser.readStringNullTerminated(encoding: .ascii)
+				let str1 = try parser.readStringASCIINullTerminated()
 				XCTAssertEqual("fish and", str1)
 
-				let str2 = try parser.readStringNullTerminated(encoding: .ascii)
+				let str2 = try parser.readStringASCIINullTerminated()
 				XCTAssertEqual("chips", str2)
 
 				XCTAssertTrue(parser.hasMoreData)
@@ -229,10 +229,10 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertEqual((msgcount*4)*2 + 1, data.count)
 
 		try BytesParser.parse(data: data) { parser in
-			let str1 = try parser.readWide32String(length: message.count, encoding: .utf32BigEndian)
+			let str1 = try parser.readWide32String(.utf32BigEndian, length: message.count)
 			XCTAssertEqual(message, str1)
 			XCTAssertEqual(0x78, try parser.readByte())
-			let str2 = try parser.readWide32String(length: message.count, encoding: .utf32LittleEndian)
+			let str2 = try parser.readWide32String(.utf32LittleEndian, length: message.count)
 			XCTAssertEqual(message, str2)
 		}
 	}
@@ -245,7 +245,7 @@ final class ByteIterableTests: XCTestCase {
 
 		try BytesParser.parse(fileURL: url) { parser in
 			let /*checksum*/ _: UInt16 = try parser.readInteger(.littleEndian)
-			let magic = try parser.readString(length: 12, encoding: .ascii, lengthIncludesTerminator: true)
+			let magic = try parser.readString(.ascii, length: 12, lengthIncludesTerminator: true)
 			XCTAssertEqual(magic, "ACROSS&DOWN")
 
 			let /*cksum_cib*/ _: Int16 = try parser.readInteger(.littleEndian)
@@ -278,16 +278,16 @@ final class ByteIterableTests: XCTestCase {
 			let text = try parser.readBytes(count: width * height)
 			XCTAssertEqual(441, text.count)
 
-			let title = try parser.readStringNullTerminated(encoding: .ascii)
+			let title = try parser.readStringNullTerminated(.ascii)
 			XCTAssertEqual("NY Times, Sunday, May 6, 2012 A-v Club", title)
-			let author = try parser.readStringNullTerminated(encoding: .ascii)
+			let author = try parser.readStringNullTerminated(.ascii)
 			XCTAssertEqual("Alex Vratsanos / Will Shortz", author)
-			let copyright = try parser.readStringNullTerminated(encoding: .ascii)
+			let copyright = try parser.readStringNullTerminated(.ascii)
 			XCTAssertEqual("© 2012, The New York Times", copyright)
 
 			var c = [String]()
 			for _ in 0 ..< clue_count {
-				c.append(try parser.readStringNullTerminated(encoding: .ascii))
+				c.append(try parser.readStringNullTerminated(.ascii))
 			}
 			XCTAssertEqual("Something you willingly part with?", c[0])
 			XCTAssertEqual("Got in the end", c[141])
@@ -307,7 +307,7 @@ final class ByteIterableTests: XCTestCase {
 		}
 
 		try BytesParser.parse(fileURL: url) { parser in
-			let magic = try parser.readString(length: 4, encoding: .ascii)
+			let magic = try parser.readString(.ascii, length: 4)
 			XCTAssertEqual("8BCB", magic)
 
 			let version = try parser.readUInt16(.bigEndian)
@@ -349,13 +349,13 @@ final class ByteIterableTests: XCTestCase {
 
 			for _ in 0 ..< colorCount {
 				let /*colorName*/ _ = try readPascalStyleWideString(parser)
-				let /*colorCode*/ _ = try parser.readString(length: 6, encoding: .ascii)
+				let /*colorCode*/ _ = try parser.readString(.ascii, length: 6)
 				let /*channels*/ _  = try parser.readData(count: componentCount)
 			}
 
 			// Last thing in the file should be the spot identifier (as ascii), providing
 			// we have read all the other data correctly!
-			let spotIdentifier = try parser.readString(length: 8, encoding: .ascii)
+			let spotIdentifier = try parser.readString(.ascii, length: 8)
 			XCTAssertEqual("spflspot", spotIdentifier)
 
 			// Paste the end of file -- should throw an error
@@ -368,9 +368,9 @@ final class ByteIterableTests: XCTestCase {
 		let url = Bundle.module.url(forResource: "00000", withExtension: "mpls")!
 
 		try BytesParser.parse(fileURL: url) { parser in
-			let magic = try parser.readString(length: 4, encoding: .ascii)
+			let magic = try parser.readString(.ascii, length: 4)
 			XCTAssertEqual("MPLS", magic)
-			let version = try parser.readString(length: 4, encoding: .ascii)
+			let version = try parser.readString(.ascii, length: 4)
 			XCTAssertEqual("0200", version)
 
 			let playlistStartOffset = try parser.readUInt32(.bigEndian)

@@ -77,7 +77,7 @@ final class DataWritingTests: XCTestCase {
 		XCTAssertEqual(77688, v2)
 		let v3: UInt16 = try p.readInteger(.littleEndian)
 		XCTAssertEqual(2987, v3)
-		XCTAssertEqual("abcd", try p.readString(length: 4, encoding: .ascii))
+		XCTAssertEqual("abcd", try p.readString(.ascii, length: 4))
 
 		XCTAssertEqual(true, try p.readBool())
 		XCTAssertEqual(12345.12345, try p.readFloat64(.bigEndian))
@@ -114,11 +114,11 @@ final class DataWritingTests: XCTestCase {
 				XCTAssertEqual(77688, v2)
 				let v3: UInt16 = try parser.readInteger(.littleEndian)
 				XCTAssertEqual(2987, v3)
-				XCTAssertEqual("abcd", try parser.readString(length: 4, encoding: .ascii))
+				XCTAssertEqual("abcd", try parser.readString(.ascii, length: 4))
 
 				XCTAssertEqual(true, try parser.readBool())
 
-				let msg = try parser.readStringNullTerminated(encoding: .utf8)
+				let msg = try parser.readStringNullTerminated(.utf8)
 				XCTAssertEqual(message, msg)
 
 				XCTAssertEqual(12345.12345, try parser.readFloat64(.bigEndian))

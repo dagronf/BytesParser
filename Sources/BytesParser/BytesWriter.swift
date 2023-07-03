@@ -36,13 +36,13 @@ public class BytesWriter {
 	/// The number of bytes currently written to the output
 	public private(set) var count: Int = 0
 
-	/// Create a byte writer that writes to a Data() object
+	/// Create a byte writer that writes to a Data() object destination
 	public init() throws {
 		self.outputStream = OutputStream(toMemory: ())
 		self.outputStream.open()
 	}
 
-	/// Create a byte writer that writes to a file URL
+	/// Create a byte writer that writes to a file URL destination
 	public init(fileURL: URL) throws {
 		assert(fileURL.isFileURL)
 		guard let stream = OutputStream(toFileAtPath: fileURL.path, append: false) else {
@@ -52,10 +52,14 @@ public class BytesWriter {
 		stream.open()
 	}
 
-	/// Must be called when you've finished writing.
+	/// Finish writing to the destination
+	///
+	/// Must be called when you've finished writing to flush the contents to the destination
 	public func complete() { self.outputStream.close() }
 
-	/// If the writer supports generating data, the data that was generated
+	/// Returns the data written to the destination **IF** the writer supports generating a `Data` object
+	///
+	/// This method only applies when writing to a `Data` destination
 	public func data() throws -> Data {
 		guard let data = self.outputStream.property(forKey: .dataWrittenToMemoryStreamKey) as? Data else {
 			throw BytesWriter.WriterError.noDataAvailable
@@ -67,12 +71,12 @@ public class BytesWriter {
 // MARK: - Data and bytes
 
 public extension BytesWriter {
-	/// Write the contents of a Data object to the output
+	/// Write the contents of a Data object to the destination
 	func writeData(_ data: Data) throws {
 		try data.withUnsafeBytes { try self.writeBuffer($0, byteCount: data.count) }
 	}
 
-	/// Write an array of bytes to the output
+	/// Write an array of bytes to the destination
 	func writeBytes(_ bytes: [UInt8]) throws {
 		let writtenCount = self.outputStream.write(bytes, maxLength: bytes.count)
 		guard writtenCount == bytes.count else {
@@ -81,14 +85,14 @@ public extension BytesWriter {
 		self.count += bytes.count
 	}
 
-	/// Write a single byte to the output
+	/// Write a single byte to the destination
 	@inlinable func writeByte(_ byte: UInt8) throws {
 		try self.writeBytes([byte])
 	}
 }
 
 private extension BytesWriter {
-	/// Write the contents of a raw buffer pointer to the outputstream
+	/// Write the contents of a raw buffer pointer to the destination
 	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws {
 		guard let base = buffer.baseAddress else {
 			throw BytesWriter.WriterError.unableToWriteBytes
@@ -118,6 +122,9 @@ public extension BytesWriter {
 
 public extension BytesWriter {
 	/// Write an integer to the stream using the specified endianness
+	/// - Parameters:
+	///   - value: The integer value to write
+	///   - byteOrder: The byte order to apply when writing
 	func writeInteger<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws {
 		// Map the value to the correct endianness...
 		let mapped = (byteOrder == .bigEndian) ? value.bigEndian : value.littleEndian
@@ -136,30 +143,57 @@ public extension BytesWriter {
 		try self.writeInteger(value, .bigEndian)
 	}
 
+	/// Write an Int16 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeInt16(_ value: Int16, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
 
+	/// Write an Int32 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeInt32(_ value: Int32, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
 
+	/// Write an Int64 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeInt64(_ value: Int64, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
 
+	/// Write A UInt8 value
+	/// - Parameters:
+	///   - value: The value to write
 	@inlinable func writeUInt8(_ value: UInt8) throws {
 		try self.writeByte(value)
 	}
 
+	/// Write a UInt16 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeUInt16(_ value: UInt16, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
 
+	/// Write a UInt32 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeUInt32(_ value: UInt32, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
 
+	/// Write a UInt64 value
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeUInt64(_ value: UInt64, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value, byteOrder)
 	}
@@ -167,11 +201,17 @@ public extension BytesWriter {
 
 public extension BytesWriter {
 	/// Write a float32 value to the stream using the IEEE 754 specification
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeFloat32(_ value: Float32, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value.bitPattern, byteOrder)
 	}
 
 	/// Write a float64 (Double) value to the stream using the IEEE 754 specification
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
 	@inlinable func writeFloat64(_ value: Float64, _ byteOrder: BytesParser.Endianness) throws {
 		try self.writeInteger(value.bitPattern, byteOrder)
 	}
@@ -180,7 +220,7 @@ public extension BytesWriter {
 // MARK: - Strings
 
 public extension BytesWriter {
-	/// Write a string with encoding
+	/// Write a string using a particular string encoding
 	/// - Parameters:
 	///   - string: The string to write
 	///   - encoding: The encoding to use
@@ -203,6 +243,17 @@ public extension BytesWriter {
 
 public extension BytesWriter {
 	/// Write a wide (2-byte) string without a terminator
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	///
+	/// Example usage :-
+	///
+	/// ```swift
+	/// let data = try BytesWriter.assemble { writer in
+	///    try writer.writeWide16String(message, encoding: .utf16LittleEndian)
+	/// }
+	/// ```
 	func writeWide16String(_ string: String, encoding: String.Encoding) throws {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
@@ -211,6 +262,16 @@ public extension BytesWriter {
 	}
 
 	/// Write a wide (2-byte) string with a null terminator (0x00 0x00)
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	///
+	/// Example usage :-
+	///
+	/// ```swift
+	/// let data = try BytesWriter.assemble { writer in
+	///    try writer.writeWide16StringNullTerminated(message, encoding: .utf16LittleEndian)
+	/// }
 	func writeWide16StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
 		try self.writeWide16String(string, encoding: encoding)
 		try self.writeBytes(terminator16)
@@ -218,7 +279,17 @@ public extension BytesWriter {
 }
 
 public extension BytesWriter {
-	/// Write a super-wide (4-byte) string without a terminator
+	/// Write a UTF32 (4-byte) string without a terminator
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	///
+	/// Example usage :-
+	///
+	/// ```swift
+	/// let data = try BytesWriter.assemble { writer in
+	///    try writer.writeWide32String(message, encoding: .utf32LittleEndian)
+	/// }
 	func writeWide32String(_ string: String, encoding: String.Encoding) throws {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
@@ -226,7 +297,17 @@ public extension BytesWriter {
 		try self.writeData(data)
 	}
 
-	/// Write a super-wide (4-byte) string with a terminator
+	/// Write a UTF32 (4-byte) string with a terminator
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The encoding to use
+	///
+	/// Example usage :-
+	///
+	/// ```swift
+	/// let data = try BytesWriter.assemble { writer in
+	///    try writer.writeWide32StringNullTerminated(message, encoding: .utf32LittleEndian)
+	/// }
 	func writeWide32StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
 		try self.writeWide32String(string, encoding: encoding)
 		try self.writeBytes(terminator32)
@@ -263,9 +344,17 @@ public extension BytesWriter {
 // MARK: - Convenience writers
 
 public extension BytesWriter {
-	/// Generate a Data object
+	/// Write formatted bytes to a Data object
 	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the Data object
 	/// - Returns: A data object
+	///
+	/// Usage :-
+	///
+	/// ```swift
+	/// let data = try BytesWriter.assemble() { writer in
+	///    try writer.writeUInt16(5, .bigEndian)
+	///    try writer.writeString("Hello", encoding: .ascii)
+	/// }
 	static func assemble(_ block: (BytesWriter) throws -> Void) throws -> Data {
 		let writer = try BytesWriter()
 		do {
@@ -278,8 +367,16 @@ public extension BytesWriter {
 		}
 	}
 
-	/// Generate a file
+	/// Write formatted bytes to a file URL
 	/// - Parameter block: The block to write formatted data using a `BytesWriter` to the file object
+	///
+	/// Usage :-
+	///
+	/// ```swift
+	/// try BytesWriter.assemble(fileURL: fileURL) { writer in
+	///    try writer.writeUInt16(5, .bigEndian)
+	///    try writer.writeString("Hello", encoding: .ascii)
+	/// }
 	static func assemble(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
 		let writer = try BytesWriter(fileURL: fileURL)
 		do {
