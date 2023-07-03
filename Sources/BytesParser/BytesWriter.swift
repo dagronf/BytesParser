@@ -27,6 +27,7 @@ public class BytesWriter {
 		case cannotConvertStringEncoding
 		case cannotOpenOutputFile
 		case unableToWriteBytes
+		case emptyBuffer
 		case notSupported
 		case noDataAvailable
 	}
@@ -72,11 +73,13 @@ public class BytesWriter {
 
 public extension BytesWriter {
 	/// Write the contents of a Data object to the destination
+	/// - Parameter data: The data to write
 	func writeData(_ data: Data) throws {
 		try data.withUnsafeBytes { try self.writeBuffer($0, byteCount: data.count) }
 	}
 
 	/// Write an array of bytes to the destination
+	/// - Parameter bytes: An array of bytes to write
 	func writeBytes(_ bytes: [UInt8]) throws {
 		let writtenCount = self.outputStream.write(bytes, maxLength: bytes.count)
 		guard writtenCount == bytes.count else {
@@ -94,16 +97,16 @@ public extension BytesWriter {
 private extension BytesWriter {
 	/// Write the contents of a raw buffer pointer to the destination
 	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws {
-		guard let base = buffer.baseAddress else {
-			throw BytesWriter.WriterError.unableToWriteBytes
+		guard byteCount > 0 else { return }
+		guard let buffer = buffer.baseAddress else {
+			throw BytesWriter.WriterError.emptyBuffer
 		}
 
-		// Map the buffer contents to a UInt8 memory buffer
-		try base.withMemoryRebound(to: UInt8.self, capacity: byteCount) { pointer in
-			let writtenCount = self.outputStream.write(pointer, maxLength: byteCount)
-			guard writtenCount == byteCount else {
-				throw BytesWriter.WriterError.unableToWriteBytes
-			}
+		var toWrite = byteCount
+		while toWrite > 0 {
+			let written = self.outputStream.write(buffer, maxLength: byteCount)
+			guard written > 0 else { throw BytesWriter.WriterError.unableToWriteBytes }
+			toWrite -= written
 		}
 		self.count += byteCount
 	}
