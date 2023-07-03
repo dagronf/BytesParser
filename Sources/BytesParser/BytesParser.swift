@@ -149,11 +149,7 @@ public extension BytesParser {
 		let byte = try self.readByte()
 
 		// Remap the UInt8 value to an Int8 value
-		return withUnsafePointer(to: byte) { ptr in
-			ptr.withMemoryRebound(to: Int8.self, capacity: 1) { pointer in
-				pointer.pointee
-			}
-		}
+		return Int8(bitPattern: byte)
 	}
 
 	/// Read an Int16 value

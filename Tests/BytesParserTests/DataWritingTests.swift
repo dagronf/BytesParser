@@ -39,19 +39,22 @@ final class DataWritingTests: XCTestCase {
 		let data = try BytesWriter.assemble { writer in
 			try writer.writeInt8(-10)
 			try writer.writeInt8(10)
+			try writer.writeUInt8(234)
 		}
 
-		XCTAssertEqual(2, data.count)
+		XCTAssertEqual(3, data.count)
 
 		try BytesParser.parse(data: data) { parser in
 			// Map byte to a Int8
 			XCTAssertEqual(-10, try parser.readInt8())
 			XCTAssertEqual(10, try parser.readInt8())
+			XCTAssertEqual(-22, try parser.readInt8())
 		}
 
 		try BytesParser.parse(data: data) { parser in
 			XCTAssertEqual(246, try parser.readUInt8())
 			XCTAssertEqual(10, try parser.readUInt8())
+			XCTAssertEqual(234, try parser.readUInt8())
 		}
 	}
 
