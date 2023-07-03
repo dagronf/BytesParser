@@ -1,5 +1,5 @@
 //
-//  BytesParser+private.swift
+//  BytesParser+read.swift
 //
 //  Copyright © 2023 Darren Ford. All rights reserved.
 //
@@ -21,9 +21,10 @@
 
 import Foundation
 
-internal extension BytesParser {
+public extension BytesParser {
 	/// Read a single byte from the input stream
-	func next() throws -> UInt8 {
+	/// - Returns: A byte
+	func readByte() throws -> UInt8 {
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
 		self.readBuffer.requireSize(1)
 		let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
@@ -32,8 +33,10 @@ internal extension BytesParser {
 		return self.readBuffer.buffer.pointee
 	}
 
-	/// Read the next `count` bytes from the input stream
-	func next(_ count: Int) throws -> Data {
+	/// Read the next `count` bytes into a Data object
+	/// - Parameter count: The number of bytes to read
+	/// - Returns: A data object containing the read bytes
+	func readData(count: Int) throws -> Data {
 		guard count > 0 else { return Data() }
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
 
@@ -68,7 +71,10 @@ internal extension BytesParser {
 		return result
 	}
 
-	func nextUpToIncluding(_ byte: UInt8) throws -> Data {
+	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
+	/// - Parameter byte: The byte to use as the terminator
+	/// - Returns: A data object containing the read bytes
+	func readUpToNextInstanceOfByte(_ byte: UInt8) throws -> Data {
 		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
 
 		// We are reading 1 byte at a time (not overly optimal!)
@@ -87,5 +93,41 @@ internal extension BytesParser {
 				return result
 			}
 		}
+	}
+
+	/// Read all of the remaining data in the source.
+	///
+	/// After this call, any further reads will throw (end of data)
+	func readAllRemainingData() throws -> Data {
+		// If the stream has no data available throw endOfData
+		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
+
+		// The chunk size for reading to the end of the file
+		let CHUNK_SZ = 16384
+
+		// Make sure our internal buffer is big enough to hold our buffered reads
+		self.readBuffer.requireSize(CHUNK_SZ)
+
+		var result = Data(capacity: CHUNK_SZ)
+		while self.inputStream.hasBytesAvailable {
+			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: CHUNK_SZ)
+			if readCount < 0 {
+				// -1 means that the operation failed
+				throw BytesParser.ParseError.endOfData
+			}
+
+			self.offset += readCount
+
+			if readCount > 0 {
+				// A positive number indicates the number of bytes read.
+				// Add the read data to the result
+				result += Data(bytes: self.readBuffer.buffer, count: readCount)
+			}
+			else {
+				// 0 indicates that the end of the buffer was reached.
+				break
+			}
+		}
+		return result
 	}
 }

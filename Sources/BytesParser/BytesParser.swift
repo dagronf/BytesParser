@@ -84,7 +84,7 @@ public class BytesParser {
 public extension BytesParser {
 	/// Read a single byte
 	func readByte() throws -> UInt8 {
-		guard let data = try self.next(1).first else {
+		guard let data = try self._next(1).first else {
 			throw ParseError.endOfData
 		}
 		return data
@@ -94,7 +94,7 @@ public extension BytesParser {
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: A data object containing the read bytes
 	func readData(count: Int) throws -> Data {
-		try self.next(count)
+		try self._next(count)
 	}
 
 	/// Read the next `count` bytes into a byte array
@@ -102,6 +102,13 @@ public extension BytesParser {
 	/// - Returns: An array of bytes
 	func readBytes(count: Int) throws -> [UInt8] {
 		try self.readData(count: count).map { $0 }
+	}
+
+	/// Read all of the remaining data in the source.
+	///
+	/// After this call, any further reads will throw (end of data)
+	func readAllRemainingData() throws -> Data {
+		try self._readToEndOfStream()
 	}
 }
 
@@ -112,13 +119,13 @@ public extension BytesParser {
 	/// - Parameter byte: The byte to use as the terminator
 	/// - Returns: A data object containing the read bytes
 	func readUpToNextInstanceOfByte(byte: UInt8) throws -> Data {
-		try self.nextUpToIncluding(byte)
+		try self._nextUpToIncluding(byte)
 	}
 
 	/// Read up to **and including** the next instance of a **single** null byte (0x00)
 	/// - Returns: A data object containing the read bytes
 	func readUpToNextNullByte() throws -> Data {
-		try self.nextUpToIncluding(0x00)
+		try self._nextUpToIncluding(0x00)
 	}
 }
 
@@ -137,7 +144,7 @@ public extension BytesParser {
 	/// - Returns: An integer value
 	func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
 		let typeSize = MemoryLayout<T>.size
-		let intData = try self.next(typeSize)
+		let intData = try self._next(typeSize)
 		let rawInteger = intData.withUnsafeBytes { $0.load(as: T.self) }
 		return byteOrder == .bigEndian ? rawInteger.bigEndian : rawInteger.littleEndian
 	}
@@ -299,7 +306,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	func readWide16String(_ encoding: String.Encoding, length: Int) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try self.next(length * 2)
+		let rawContent = try self._next(length * 2)
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
@@ -359,7 +366,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	func readWide32String(_ encoding: String.Encoding, length: Int) throws -> String {
 		guard length > 0 else { return "" }
-		let rawContent = try self.next(length * 4)
+		let rawContent = try self._next(length * 4)
 		guard let str = String(data: rawContent, encoding: encoding) else {
 			throw ParseError.invalidStringEncoding
 		}
@@ -408,26 +415,45 @@ public extension BytesParser {
 
 public extension BytesParser {
 	/// Parse the contents of a `Data` object
+	/// - Parameters:
+	///   - data: The data object to parse
+	///   - block: The block containing the parsing calls
 	@inlinable static func parse(data: Data, _ block: (BytesParser) throws -> Void) throws {
 		let parser = BytesParser(data: data)
 		try block(parser)
 	}
 
 	/// Parse the contents of a byte array
+	/// - Parameters:
+	///   - bytes: An array of bytes to parse
+	///   - block: The block containing the parsing calls
 	@inlinable static func parse(bytes: [UInt8], _ block: (BytesParser) throws -> Void) throws {
 		let parser = BytesParser(content: bytes)
 		try block(parser)
 	}
 
 	/// Parse the contents of a local file
-	@inlinable static func parse(fileURL: URL, _ block: (BytesParser) throws -> Void) throws {
+	/// - Parameters:
+	///   - fileURL: The local file URL to read from
+	///   - block: The block containing the parsing calls
+	@inlinable static func parse<ResultType>(fileURL: URL, _ block: (BytesParser) throws -> ResultType) throws -> ResultType {
 		let parser = try BytesParser(fileURL: fileURL)
-		try block(parser)
+		return try block(parser)
 	}
 
 	/// Parse the contents of an input stream
+	/// - Parameters:
+	///   - inputStream: The stream to read from
+	///   - block: The block containing the parsing calls
 	@inlinable static func parse(inputStream: InputStream, _ block: (BytesParser) throws -> Void) throws {
 		let parser = BytesParser(inputStream: inputStream)
 		try block(parser)
+	}
+
+	/// Read all remaining data in the input stream
+	/// - Parameter inputStream: The inputstream to read from
+	/// - Returns: A data object containing the read data
+	@inlinable static func data(inputStream: InputStream) throws -> Data {
+		try BytesParser(inputStream: inputStream).readAllRemainingData()
 	}
 }

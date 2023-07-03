@@ -424,4 +424,45 @@ final class ByteIterableTests: XCTestCase {
 			}
 		}
 	}
+
+	func testReadAll() throws {
+		let url = Bundle.module.url(forResource: "00000", withExtension: "mpls")!
+		do {
+			try BytesParser.parse(fileURL: url) { parser in
+				let data = try parser.readAllRemainingData()
+				XCTAssertEqual(358, data.count)
+				XCTAssertThrowsError(try parser.readByte())
+			}
+		}
+
+		do {
+			try BytesParser.parse(fileURL: url) { parser in
+				let _ = try parser.readStringASCII(length: 4)
+				let data = try parser.readAllRemainingData()
+				XCTAssertEqual(354, data.count)
+				XCTAssertThrowsError(try parser.readByte())
+			}
+		}
+
+		do {
+			let rawData: [UInt8] = [0x66,0x69,0x73,0x68,0x00,0x61,0x6E,0x64,0x00]
+			try BytesParser.parse(bytes: rawData) { parser in
+				XCTAssertEqual(0x66, try parser.readByte())
+				XCTAssertEqual(0x69, try parser.readByte())
+				XCTAssertEqual(Data([0x73,0x68,0x00,0x61,0x6E,0x64,0x00]), try parser.readAllRemainingData())
+				XCTAssertThrowsError(try parser.readByte())
+			}
+		}
+
+		do {
+			let inputStream = try XCTUnwrap(InputStream(fileAtPath: url.path))
+			let allData = try BytesParser.data(inputStream: inputStream)
+			XCTAssertEqual(358, allData.count)
+
+			try BytesParser.parse(data: allData) { parser in
+				let magic = try parser.readString(.ascii, length: 8)
+				XCTAssertEqual("MPLS0200", magic)
+			}
+		}
+	}
 }
