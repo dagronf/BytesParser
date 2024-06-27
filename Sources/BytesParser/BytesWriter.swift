@@ -1,7 +1,5 @@
 //
-//  BytesWriter.swift
-//
-//  Copyright © 2023 Darren Ford. All rights reserved.
+//  Copyright © 2024 Darren Ford. All rights reserved.
 //
 //  MIT license
 //
@@ -127,7 +125,7 @@ public extension BytesWriter {
 	///   - byteOrder: The byte order to apply when writing
 	func writeInteger<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws {
 		// Map the value to the correct endianness...
-		let mapped = (byteOrder == .bigEndian) ? value.bigEndian : value.littleEndian
+		let mapped = (byteOrder == .big) ? value.bigEndian : value.littleEndian
 
 		// ... then write out the raw bytes
 		try withUnsafeBytes(of: mapped) { pointer in
@@ -140,7 +138,7 @@ public extension BytesWriter {
 	/// Write an Int8 value
 	/// - Parameter value: The value to write
 	@inlinable func writeInt8(_ value: Int8) throws {
-		try self.writeInteger(value, .bigEndian)
+		try self.writeInteger(value, .big)
 	}
 
 	/// Write an Int16 value

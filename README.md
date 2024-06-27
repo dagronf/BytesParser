@@ -32,9 +32,9 @@ let magic = try parser.readString(length: 8, encoding: .ascii)
 assert("8BCBAFFE", magic)
 
 // Read 12-character little-endian encoded WCS2 (UTF16) string 
-let title = try parser.readUTF16String(.littleEndian, length: 12)
-let length = try parser.readInt16(.littleEndian)
-let offset = try parser.readInt32(.littleEndian)
+let title = try parser.readUTF16String(.little, length: 12)
+let length = try parser.readInt16(.little)
+let offset = try parser.readInt32(.little)
 ```
 
 ### Closure based
@@ -46,14 +46,14 @@ The closure based API hides some of the complexity of opening/closing a bytes fi
 ```swift
 // Parsing a (local) crossword file
 try BytesParser.parse(fileURL: url) { parser in
-   let checksum: UInt16 = try parser.readInteger(.littleEndian)
+   let checksum: UInt16 = try parser.readInteger(.little)
    let magic = try parser.readString(length: 12, encoding: .ascii, lengthIncludesTerminator: true)
    assert(magic, "ACROSS&DOWN")
 
    let width = try parser.readInt8()
    let height = try parser.readInt8()
 
-   let clueCount: UInt16 = try parser.readInteger(.littleEndian)
+   let clueCount: UInt16 = try parser.readInteger(.little)
    ...
    let title = try parser.readStringNullTerminated(encoding: .ascii)
 }

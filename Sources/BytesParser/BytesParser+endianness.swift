@@ -19,27 +19,29 @@
 
 import Foundation
 
-/// A wrapper around a pointer to an array of bytes
-internal class ByteBuffer {
-	init() {
-		self.buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: ByteBuffer.DefaultSize)
+public extension BytesParser {
+	/// Endian types
+	enum Endianness {
+		/// Big endian
+		case big
+		/// Little endian
+		case little
 	}
+}
 
-	deinit {
-		self.buffer.deallocate()
-	}
-
-	func requireSize(_ count: Int) {
-		if count > self.readBufferSize {
-			self.buffer.deallocate()
-			self.buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
+extension BytesParser.Endianness {
+	/// Convert an array of bytes to a fixed width integer value following the endianness rules
+	@inlinable public func convert<T: FixedWidthInteger>(_ intData: Data) -> T {
+		assert(intData.count == MemoryLayout<T>.size)
+		switch self {
+		case .big:
+			return intData.reduce(0) { soFar, byte in
+				return soFar << 8 | T(byte)
+			}
+		case .little:
+			return intData.reversed().reduce(0) { soFar, byte in
+				return soFar << 8 | T(byte)
+			}
 		}
 	}
-
-	// The raw byte buffer
-	internal private(set) var buffer: UnsafeMutablePointer<UInt8>
-
-	// Private
-	private static let DefaultSize = 1024
-	private var readBufferSize = ByteBuffer.DefaultSize
 }

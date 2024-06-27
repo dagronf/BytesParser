@@ -108,7 +108,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(.littleEndian)
+			let str = try data.readUTF16NullTerminatedString(.little)
 			XCTAssertEqual("ab", str)
 			XCTAssertEqual(6, data.offset)
 
@@ -121,7 +121,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x00, 0x61, 0x00, 0x62, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(.bigEndian)
+			let str = try data.readUTF16NullTerminatedString(.big)
 			XCTAssertEqual("ab", str)
 
 			let b = try data.readByte()
@@ -131,7 +131,7 @@ final class ByteIterableTests: XCTestCase {
 
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16NullTerminatedString(.bigEndian)
+				let str = try parser.readUTF16NullTerminatedString(.big)
 				XCTAssertEqual("ab", str)
 				let b = try parser.readByte()
 				XCTAssertEqual(0x80, b)
@@ -142,7 +142,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16String(.littleEndian, length: 2)
+			let str = try data.readUTF16String(.little, length: 2)
 			XCTAssertEqual("ab", str)
 			XCTAssertTrue(data.hasMoreData)
 			XCTAssertEqual(0x00, try data.readByte())
@@ -154,7 +154,7 @@ final class ByteIterableTests: XCTestCase {
 			// Try the same with an input stream
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16String(.littleEndian, length: 2)
+				let str = try parser.readUTF16String(.little, length: 2)
 				XCTAssertEqual("ab", str)
 				XCTAssertTrue(parser.hasMoreData)
 				XCTAssertEqual(0x00, try parser.readByte())
@@ -195,12 +195,12 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadIntegersAndStuff() throws {
 		let data = try BytesWriter.assemble { writer in
-			try writer.writeInt16(10101, .bigEndian)
-			try writer.writeUInt16(40000, .bigEndian)
-			try writer.writeInt16(-10101, .littleEndian)
-			try writer.writeUInt16(65535, .littleEndian)
+			try writer.writeInt16(10101, .big)
+			try writer.writeUInt16(40000, .big)
+			try writer.writeInt16(-10101, .little)
+			try writer.writeUInt16(65535, .little)
 
-			try writer.writeFloat64(12345.67890, .littleEndian)
+			try writer.writeFloat64(12345.67890, .little)
 			try writer.writeBool(true)
 			try writer.writeBool(false)
 		}
@@ -208,11 +208,11 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertEqual(18, data.count)
 
 		try BytesParser.parse(data: data) { parser in
-			XCTAssertEqual(10101, try parser.readInt16(.bigEndian))
-			XCTAssertEqual(40000, try parser.readUInt16(.bigEndian))
-			XCTAssertEqual(-10101, try parser.readInt16(.littleEndian))
-			XCTAssertEqual(65535, try parser.readUInt16(.littleEndian))
-			XCTAssertEqual(12345.67890, try parser.readFloat64(.littleEndian))
+			XCTAssertEqual(10101, try parser.readInt16(.big))
+			XCTAssertEqual(40000, try parser.readUInt16(.big))
+			XCTAssertEqual(-10101, try parser.readInt16(.little))
+			XCTAssertEqual(65535, try parser.readUInt16(.little))
+			XCTAssertEqual(12345.67890, try parser.readFloat64(.little))
 			XCTAssertEqual(true, try parser.readBool())
 			XCTAssertEqual(false, try parser.readBool())
 		}
@@ -244,34 +244,37 @@ final class ByteIterableTests: XCTestCase {
 		let url = Bundle.module.url(forResource: "May0612", withExtension: "puz")!
 
 		try BytesParser.parse(fileURL: url) { parser in
-			let /*checksum*/ _: UInt16 = try parser.readInteger(.littleEndian)
+			let /*checksum*/ _: UInt16 = try parser.readInteger(.little)
 			let magic = try parser.readString(.ascii, length: 12, lengthIncludesTerminator: true)
 			XCTAssertEqual(magic, "ACROSS&DOWN")
 
-			let /*cksum_cib*/ _: Int16 = try parser.readInteger(.littleEndian)
+			let /*cksum_cib*/ _: Int16 = try parser.readInteger(.little)
 			let /*magic10*/ _ = try parser.readBytes(count: 4)
 			let /*magic14*/ _ = try parser.readBytes(count: 4)
 			let /*magic18*/ _ = try parser.readBytes(count: 4)
 
-			let /*noise_1c*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*scrambled_tag*/ _: Int16 = try parser.readInteger(.littleEndian)
+			let /*noise_1c*/ _: Int16 = try parser.readInteger(.little)
+			let /*scrambled_tag*/ _: Int16 = try parser.readInteger(.little)
 
-			let /*noise_20*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*noise_22*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*noise_24*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*noise_26*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*noise_28*/ _: Int16 = try parser.readInteger(.littleEndian)
-			let /*noise_2a*/ _: Int16 = try parser.readInteger(.littleEndian)
+			let noise: [Int16] = try parser.readInteger(6, .little)
+			XCTAssertEqual(6, noise.count)
+
+//			let /*noise_20*/ _: Int16 = try parser.readInteger(.little)
+//			let /*noise_22*/ _: Int16 = try parser.readInteger(.little)
+//			let /*noise_24*/ _: Int16 = try parser.readInteger(.little)
+//			let /*noise_26*/ _: Int16 = try parser.readInteger(.little)
+//			let /*noise_28*/ _: Int16 = try parser.readInteger(.little)
+//			let /*noise_2a*/ _: Int16 = try parser.readInteger(.little)
 
 			let width = Int(try parser.readByte())
 			XCTAssertEqual(21, width)
 			let height = Int(try parser.readByte())
 			XCTAssertEqual(21, height)
 
-			let clue_count: UInt16 = try parser.readInteger(.littleEndian)
+			let clue_count: UInt16 = try parser.readInteger(.little)
 			XCTAssertEqual(142, clue_count)
-			let /*grid_type*/ _: UInt16 = try parser.readInteger(.littleEndian)
-			let /*grid_flag*/ _: UInt16 = try parser.readInteger(.littleEndian)
+			let /*grid_type*/ _: UInt16 = try parser.readInteger(.little)
+			let /*grid_flag*/ _: UInt16 = try parser.readInteger(.little)
 
 			let solution = try parser.readBytes(count: width * height)
 			XCTAssertEqual(441, solution.count)
@@ -302,18 +305,18 @@ final class ByteIterableTests: XCTestCase {
 		// Function to read Adobe-style pascal strings
 		func readPascalStyleWideString(_ parser: BytesParser) throws -> String {
 			// The length of title
-			let titleLength = try parser.readUInt32(.bigEndian)
-			return try parser.readUTF16String(.bigEndian, length: Int(titleLength))
+			let titleLength = try parser.readUInt32(.big)
+			return try parser.readUTF16String(.big, length: Int(titleLength))
 		}
 
 		try BytesParser.parse(fileURL: url) { parser in
 			let magic = try parser.readString(.ascii, length: 4)
 			XCTAssertEqual("8BCB", magic)
 
-			let version = try parser.readUInt16(.bigEndian)
+			let version = try parser.readUInt16(.big)
 			XCTAssertEqual(1, version)
 
-			let identifier = try parser.readUInt16(.bigEndian)
+			let identifier = try parser.readUInt16(.big)
 			XCTAssertEqual(3008, identifier)
 
 			// title is a wide string of 'titleLength' characters
@@ -327,15 +330,15 @@ final class ByteIterableTests: XCTestCase {
 			let description = try readPascalStyleWideString(parser)
 			XCTAssertEqual(description, "$$$/colorbook/HKSE/description=Copyright^C 2001, HKS (Hostmann-Steinberg, K+E, Schmincke) - Warenzeichenverband e.V.")
 
-			let colorCount = try parser.readUInt16(.bigEndian)
+			let colorCount = try parser.readUInt16(.big)
 			XCTAssertEqual(98, colorCount)
 
-			let pageSize = try parser.readUInt16(.bigEndian)
+			let pageSize = try parser.readUInt16(.big)
 			XCTAssertEqual(5, pageSize)
-			let pageSelectorOffset = try parser.readUInt16(.bigEndian)
+			let pageSelectorOffset = try parser.readUInt16(.big)
 			XCTAssertEqual(1, pageSelectorOffset)
 
-			let colorSpace = try parser.readUInt16(.bigEndian)
+			let colorSpace = try parser.readUInt16(.big)
 			let componentCount: Int = {
 				switch colorSpace {
 				case 0: return 3  // rgb
@@ -373,17 +376,17 @@ final class ByteIterableTests: XCTestCase {
 			let version = try parser.readString(.ascii, length: 4)
 			XCTAssertEqual("0200", version)
 
-			let playlistStartOffset = try parser.readUInt32(.bigEndian)
+			let playlistStartOffset = try parser.readUInt32(.big)
 			XCTAssertEqual(58, playlistStartOffset)
-			let markStartOffset = try parser.readUInt32(.bigEndian)
+			let markStartOffset = try parser.readUInt32(.big)
 			XCTAssertEqual(254, markStartOffset)
-			let extensionStartOffset = try parser.readUInt32(.bigEndian)
+			let extensionStartOffset = try parser.readUInt32(.big)
 			XCTAssertEqual(0, extensionStartOffset)
 
 			let unused1 = try parser.readBytes(count: 20)
 			XCTAssertEqual(Array(repeating: 0, count: 20), unused1)
 
-			let applicationInfoOffset = try parser.readUInt32(.bigEndian)
+			let applicationInfoOffset = try parser.readUInt32(.big)
 			XCTAssertEqual(14, applicationInfoOffset)
 
 			XCTAssertEqual(0, try parser.readByte())
@@ -391,7 +394,7 @@ final class ByteIterableTests: XCTestCase {
 			let playbackType = try parser.readByte()
 			XCTAssertEqual(1, playbackType)
 
-			let playbackCount = try parser.readUInt16(.bigEndian)
+			let playbackCount = try parser.readUInt16(.big)
 			XCTAssertEqual(0, playbackCount)
 
 			let unused2 = try parser.readBytes(count: 8)
@@ -408,16 +411,16 @@ final class ByteIterableTests: XCTestCase {
 					_ = try parser.readBytes(count: offset)
 				}
 
-				let playlistLength = try parser.readUInt32(.bigEndian)
+				let playlistLength = try parser.readUInt32(.big)
 				XCTAssertEqual(192, playlistLength)
 
 				let unused3 = try parser.readBytes(count: 2)
 				XCTAssertEqual(Array(repeating: 0, count: 2), unused3)
 
-				let playItemCount = try parser.readUInt16(.bigEndian)
+				let playItemCount = try parser.readUInt16(.big)
 				XCTAssertEqual(1, playItemCount)
 
-				let subpathCount = try parser.readUInt16(.bigEndian)
+				let subpathCount = try parser.readUInt16(.big)
 				XCTAssertEqual(1, subpathCount)
 
 				// ...

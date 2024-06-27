@@ -1,7 +1,5 @@
 //
-//  BytesParser.swift
-//
-//  Copyright © 2023 Darren Ford. All rights reserved.
+//  Copyright © 2024 Darren Ford. All rights reserved.
 //
 //  MIT license
 //
@@ -28,12 +26,6 @@ public class BytesParser {
 		case invalidFile
 		case endOfData
 		case invalidStringEncoding
-	}
-
-	/// Endian types
-	public enum Endianness {
-		case bigEndian
-		case littleEndian
 	}
 
 	/// Is there more data to read?
@@ -109,35 +101,41 @@ public extension BytesParser {
 	@inlinable func readBool() throws -> Bool {
 		try self.readByte() != 0x00
 	}
-	
+
+	/// Read an array of bool
+	/// - Parameters:
+	///   - count: The number of bool to read
+	/// - Returns: An array of bool
+	@inlinable func readBool(_ count: Int) throws -> [Bool] {
+		try (0 ..< count).map { _ in try readBool() }
+	}
+}
+
+public extension BytesParser {
 	/// Read an integer value
 	/// - Parameter byteOrder: Expected endianness for the integer
 	/// - Returns: An integer value
 	///
 	/// See the discussion [here](https://web.archive.org/web/2/https://forums.swift.org/t/convert-uint8-to-int/30117/9)
-	func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
-		let typeSize = MemoryLayout<T>.size
-		let intData = try self.readData(count: typeSize)
-		if byteOrder == .bigEndian {
-			return intData.reduce(0) { soFar, byte in
-				return soFar << 8 | T(byte)
-			}
-		}
-		else {
-			return intData.reversed().reduce(0) { soFar, byte in
-				return soFar << 8 | T(byte)
-			}
-		}
+	@inlinable func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
+		byteOrder.convert(try self.readData(count: MemoryLayout<T>.size))
+	}
+
+	/// Read an array of integers
+	/// - Parameters:
+	///   - count: The number of integers to read
+	///   - byteOrder: The byte order of the integers
+	/// - Returns: An array of integers
+	@inlinable func readInteger<T: FixedWidthInteger>(_ count: Int, _ byteOrder: BytesParser.Endianness) throws -> [T] {
+		try (0 ..< count).map { _ in try readInteger(byteOrder) }
 	}
 }
 
 public extension BytesParser {
 	/// Read an Int8 value
-	func readInt8() throws -> Int8 {
-		let byte = try self.readByte()
-
+	@inlinable func readInt8() throws -> Int8 {
 		// Remap the UInt8 value to an Int8 value
-		return Int8(bitPattern: byte)
+		Int8(bitPattern: try self.readByte())
 	}
 
 	/// Read an Int16 value
@@ -191,16 +189,43 @@ public extension BytesParser {
 // MARK: Float values
 
 public extension BytesParser {
-	/// Read in an IEEE 754 float32 value ([IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933))
+	/// Read in an IEEE 754 float32 value
+	/// - Parameter byteOrder: The endianness of the input value
+	/// - Returns: A Float32 value
+	///
+	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
 	func readFloat32(_ byteOrder: Endianness) throws -> Float32 {
-		let rawValue: UInt32 = try readInteger(byteOrder)
-		return Float32(bitPattern: rawValue)
+		return Float32(bitPattern: try readUInt32(byteOrder))
 	}
 
-	/// Read in an IEEE 754 float64 value ([IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933))
-	func readFloat64(_ byteOrder: Endianness) throws -> Float64 {
-		let rawValue: UInt64 = try readInteger(byteOrder)
-		return Float64(bitPattern: rawValue)
+	/// Read an array of Float32 values
+	/// - Parameters:
+	///   - count: The number of Float32 values to read
+	///   - byteOrder: The byte order of the float values
+	/// - Returns: An array of float values
+	@inlinable func readFloat32(count: Int, _ byteOrder: Endianness) throws -> [Float32] {
+		return try generating(count) { _ in try readFloat32(byteOrder) }
+	}
+}
+
+public extension BytesParser {
+	/// Read in an IEEE 754 float64 value
+	/// - Parameter byteOrder: The endianness of the input value
+	/// - Returns: A Float64 value
+	///
+	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
+	@inlinable func readFloat64(_ byteOrder: Endianness) throws -> Float64 {
+		Float64(bitPattern: try readUInt64(byteOrder))
+	}
+
+	/// Read an array of Float64 values
+	/// - Parameters:
+	///   - count: The number of Float64 values to read
+	///   - byteOrder: The byte order of the float values
+	/// - Returns: An array of float values
+	@inlinable func readFloat64(count: Int, _ byteOrder: Endianness) throws -> [Float64] {
+		assert(count > 0)
+		return try generating(count) { _ in try readFloat64(byteOrder) }
 	}
 }
 
@@ -320,7 +345,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	@inlinable func readUTF16String(_ byteOrder: Endianness, length: Int) throws -> String {
 		try self.readWide16String(
-			(byteOrder == .bigEndian) ? .utf16BigEndian : .utf16LittleEndian,
+			(byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian,
 			length: length
 		)
 	}
@@ -330,7 +355,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	@inlinable func readUTF16NullTerminatedString(_ byteOrder: Endianness) throws -> String {
 		try self.readWide16StringNullTerminated(
-			encoding: (byteOrder == .bigEndian) ? .utf16BigEndian : .utf16LittleEndian
+			encoding: (byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian
 		)
 	}
 }
@@ -379,7 +404,7 @@ public extension BytesParser {
 	/// - Returns: A string
 	@inlinable func readUTF32String(_ byteOrder: Endianness, length: Int) throws -> String {
 		try self.readWide16String(
-			(byteOrder == .bigEndian) ? .utf32BigEndian : .utf32LittleEndian,
+			(byteOrder == .big) ? .utf32BigEndian : .utf32LittleEndian,
 			length: length
 		)
 	}
@@ -388,7 +413,7 @@ public extension BytesParser {
 	///   - byteOrder: The expected byte ordering for the string
 	/// - Returns: A string
 	@inlinable func readUTF32NullTerminatedString(_ byteOrder: Endianness) throws -> String {
-		try self.readWide32StringNullTerminated((byteOrder == .bigEndian) ? .utf32BigEndian : .utf32LittleEndian)
+		try self.readWide32StringNullTerminated((byteOrder == .big) ? .utf32BigEndian : .utf32LittleEndian)
 	}
 }
 
