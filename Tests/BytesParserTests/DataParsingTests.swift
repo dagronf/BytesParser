@@ -56,7 +56,7 @@ final class ByteIterableTests: XCTestCase {
 		// https://onlineutf8tools.com/convert-utf8-to-utf16
 		let rawData: [UInt8] = [0x1f,0x04, 0x40,0x04, 0x38,0x04, 0x32,0x04, 0x35,0x04, 0x42,0x04, 0x00,0x00, 0x80, 0x99]
 		try BytesParser.parse(bytes: rawData) { parser in
-			let msg = try parser.readWide16StringNullTerminated(encoding: .utf16LittleEndian)
+			let msg = try parser.readStringWide16NullTerminated(encoding: .utf16LittleEndian)
 			XCTAssertEqual(msg, "Привет")
 			XCTAssertEqual(0x80, try parser.readByte())
 			XCTAssertEqual(0x99, try parser.readByte())
@@ -66,7 +66,7 @@ final class ByteIterableTests: XCTestCase {
 		// Whitespace at the end
 		let rawData2: [UInt8] = [0x1f,0x04, 0x40,0x04, 0x38,0x04, 0x32,0x04, 0x35,0x04, 0x42,0x04, 0x00, 0x00]
 		try BytesParser.parse(bytes: rawData2) { parser in
-			let msg = try parser.readWide16StringNullTerminated(encoding: .utf16LittleEndian)
+			let msg = try parser.readStringWide16NullTerminated(encoding: .utf16LittleEndian)
 			XCTAssertEqual(msg, "Привет")
 			XCTAssertThrowsError(try parser.readByte())
 		}
@@ -108,7 +108,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(.little)
+			let str = try data.readStringUTF16NullTerminated(.little)
 			XCTAssertEqual("ab", str)
 			XCTAssertEqual(6, data.offset)
 
@@ -121,7 +121,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x00, 0x61, 0x00, 0x62, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16NullTerminatedString(.big)
+			let str = try data.readStringUTF16NullTerminated(.big)
 			XCTAssertEqual("ab", str)
 
 			let b = try data.readByte()
@@ -131,7 +131,7 @@ final class ByteIterableTests: XCTestCase {
 
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16NullTerminatedString(.big)
+				let str = try parser.readStringUTF16NullTerminated(.big)
 				XCTAssertEqual("ab", str)
 				let b = try parser.readByte()
 				XCTAssertEqual(0x80, b)
@@ -142,7 +142,7 @@ final class ByteIterableTests: XCTestCase {
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 			let data = BytesParser(content: d)
-			let str = try data.readUTF16String(.little, length: 2)
+			let str = try data.readStringUTF16(.little, length: 2)
 			XCTAssertEqual("ab", str)
 			XCTAssertTrue(data.hasMoreData)
 			XCTAssertEqual(0x00, try data.readByte())
@@ -154,7 +154,7 @@ final class ByteIterableTests: XCTestCase {
 			// Try the same with an input stream
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesParser(inputStream: inputStream)
-				let str = try parser.readUTF16String(.little, length: 2)
+				let str = try parser.readStringUTF16(.little, length: 2)
 				XCTAssertEqual("ab", str)
 				XCTAssertTrue(parser.hasMoreData)
 				XCTAssertEqual(0x00, try parser.readByte())
@@ -229,10 +229,10 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertEqual((msgcount*4)*2 + 1, data.count)
 
 		try BytesParser.parse(data: data) { parser in
-			let str1 = try parser.readWide32String(.utf32BigEndian, length: message.count)
+			let str1 = try parser.readStringWide32(.utf32BigEndian, length: message.count)
 			XCTAssertEqual(message, str1)
 			XCTAssertEqual(0x78, try parser.readByte())
-			let str2 = try parser.readWide32String(.utf32LittleEndian, length: message.count)
+			let str2 = try parser.readStringWide32(.utf32LittleEndian, length: message.count)
 			XCTAssertEqual(message, str2)
 		}
 	}
@@ -241,7 +241,7 @@ final class ByteIterableTests: XCTestCase {
 		// Parse a binary crossword file
 		// Crossword integer values are all little-endian
 
-		let url = Bundle.module.url(forResource: "May0612", withExtension: "puz")!
+		let url = try resourceURL(forResource: "May0612", withExtension: "puz")
 
 		try BytesParser.parse(fileURL: url) { parser in
 			let /*checksum*/ _: UInt16 = try parser.readInteger(.little)
@@ -300,13 +300,13 @@ final class ByteIterableTests: XCTestCase {
 	func testParseACB() throws {
 		// ACB integers are all big endian
 
-		let url = Bundle.module.url(forResource: "HKS E (LAB)", withExtension: "acb")!
+		let url = try resourceURL(forResource: "HKS E (LAB)", withExtension: "acb")
 
 		// Function to read Adobe-style pascal strings
 		func readPascalStyleWideString(_ parser: BytesParser) throws -> String {
 			// The length of title
 			let titleLength = try parser.readUInt32(.big)
-			return try parser.readUTF16String(.big, length: Int(titleLength))
+			return try parser.readStringUTF16(.big, length: Int(titleLength))
 		}
 
 		try BytesParser.parse(fileURL: url) { parser in
@@ -368,7 +368,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func testParseMPLS() throws {
 		// https://en.wikibooks.org/wiki/User:Bdinfo/mpls
-		let url = Bundle.module.url(forResource: "00000", withExtension: "mpls")!
+		let url = try resourceURL(forResource: "00000", withExtension: "mpls")
 
 		try BytesParser.parse(fileURL: url) { parser in
 			let magic = try parser.readString(.ascii, length: 4)
@@ -429,7 +429,7 @@ final class ByteIterableTests: XCTestCase {
 	}
 
 	func testReadAll() throws {
-		let url = Bundle.module.url(forResource: "00000", withExtension: "mpls")!
+		let url = try resourceURL(forResource: "00000", withExtension: "mpls")
 		do {
 			try BytesParser.parse(fileURL: url) { parser in
 				let data = try parser.readAllRemainingData()
@@ -466,6 +466,80 @@ final class ByteIterableTests: XCTestCase {
 				let magic = try parser.readString(.ascii, length: 8)
 				XCTAssertEqual("MPLS0200", magic)
 			}
+		}
+	}
+
+	// Sample files created using iconv
+	// iconv -f UTF-8 -t UTF-32LE le.txt > utf32-le.txt
+
+	func testReadUTF16LE() throws {
+		let inputStream = try resourceInputStream(forResource: "utf16-le", withExtension: "txt")
+		try BytesParser.parse(inputStream: inputStream) { parser in
+			let text = try parser.readStringUTF16LE(length: 18)
+			XCTAssertEqual("Testing UTF16 LE ツ", text)
+		}
+	}
+
+	func testReadUTF16BE() throws {
+		let inputStream = try resourceInputStream(forResource: "utf16-be", withExtension: "txt")
+		try BytesParser.parse(inputStream: inputStream) { parser in
+			let text = try parser.readStringUTF16BE(length: 18)
+			XCTAssertEqual("Testing UTF16 BE ツ", text)
+		}
+	}
+
+	func testReadUTF32LE() throws {
+		let inputStream = try resourceInputStream(forResource: "utf32-le", withExtension: "txt")
+		try BytesParser.parse(inputStream: inputStream) { parser in
+			let text = try parser.readStringUTF32LE(length: 18)
+			XCTAssertEqual("Testing UTF32 LE ツ", text)
+		}
+	}
+
+	func testReadUTF32BE() throws {
+		let inputStream = try resourceInputStream(forResource: "utf32-be", withExtension: "txt")
+		try BytesParser.parse(inputStream: inputStream) { parser in
+			let text = try parser.readStringUTF32BE(length: 18)
+			XCTAssertEqual("Testing UTF32 BE ツ", text)
+		}
+	}
+
+	func testReadWindowsBitmap() throws {
+		// https://en.wikipedia.org/wiki/BMP_file_format
+		let inputStream = try resourceInputStream(forResource: "winbitmap", withExtension: "bmp")
+		try BytesParser.parse(inputStream: inputStream) { parser in
+			let type = try parser.readStringASCII(length: 2)
+			XCTAssertEqual("BM", type)
+			let fileByteSize = try parser.readInt32(.little)
+			XCTAssertEqual(7050, fileByteSize)
+			_ = try parser.readBytes(count: 2)
+			_ = try parser.readBytes(count: 2)
+			let offset = try parser.readUInt32(.little)
+			XCTAssertEqual(138, offset)
+
+			let sizeOfHeader = try parser.readUInt32(.little)
+			XCTAssertEqual(124, sizeOfHeader)
+
+			let width = try parser.readInt32(.little)
+			XCTAssertEqual(48, width)
+			let height = try parser.readInt32(.little)
+			XCTAssertEqual(48, height)
+			let colorPlanes = try parser.readInt16(.little)
+			XCTAssertEqual(1, colorPlanes)
+			let bitsPerPixel = try parser.readInt16(.little)
+			XCTAssertEqual(24, bitsPerPixel)
+			let compressionMethod = try parser.readInt16(.little)
+			XCTAssertEqual(0, compressionMethod)
+			let rawBitmapSize = try parser.readUInt32(.little)
+			XCTAssertEqual(452984832, rawBitmapSize)
+			let horizontalRes = try parser.readInt32(.little)
+			XCTAssertEqual(185794560, horizontalRes)
+			let verticalRes = try parser.readInt32(.little)
+			XCTAssertEqual(185794560, verticalRes)
+			let paletteCount = try parser.readUInt32(.little)
+			XCTAssertEqual(0, paletteCount)
+			let importantColors = try parser.readUInt32(.little)
+			XCTAssertEqual(0, importantColors)
 		}
 	}
 }

@@ -6,7 +6,30 @@
 //
 
 import Foundation
+import XCTest
+
 @testable import BytesParser
+
+enum TestErrors: Error {
+	case cannotFindResource
+}
+
+func resourceURL(forResource name: String, withExtension extn: String) throws -> URL {
+	guard let url = Bundle.module.url(forResource: name, withExtension: extn) else {
+		throw TestErrors.cannotFindResource
+	}
+	return url
+}
+
+func resourceData(forResource name: String, withExtension extn: String) throws -> Data {
+	let url = try resourceURL(forResource: name, withExtension: extn)
+	return try Data(contentsOf: url)
+}
+
+func resourceInputStream(forResource name: String, withExtension extn: String) throws -> InputStream {
+	let url = try resourceURL(forResource: name, withExtension: extn)
+	return try XCTUnwrap(InputStream(fileAtPath: url.path))
+}
 
 /// Call a block providing a valid temporary URL
 func withTemporaryFile<ReturnType>(_ fileExtension: String? = nil, _ block: (URL) throws -> ReturnType) throws -> ReturnType {
