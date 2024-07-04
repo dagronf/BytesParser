@@ -24,9 +24,6 @@ public class BytesReader {
 	/// Is there more data to read?
 	public var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
 
-	/// The current read offset within the source
-	public internal(set) var offset: Int = 0
-
 	/// Create a byte parser from a data object
 	public init(data: Data) {
 		self.inputStream = InputStream(data: data)
@@ -57,8 +54,15 @@ public class BytesReader {
 		inputStream.open()
 	}
 
+	/// The current read offset within the input data
+	public func readOffset() -> Int { self.offset }
+
 	// private
+	
 	let readBuffer = ByteBuffer()
+
+	/// The current read offset within the source
+	var offset: Int = 0
 
 	// The stream containing the data to be parsed
 	let inputStream: InputStream

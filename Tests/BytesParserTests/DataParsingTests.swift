@@ -545,4 +545,45 @@ final class ByteIterableTests: XCTestCase {
 			XCTAssertEqual(0, importantColors)
 		}
 	}
+
+	func testInt8() throws {
+		let values: [Int8] = [56, -37, 127]
+
+		let d1 = try BytesWriter.assemble { writer in
+			try writer.writeInt8(values)
+		}
+
+		try BytesReader.parse(data: d1) { reader in
+			let r1 = try reader.readInt8(count: values.count)
+			XCTAssertEqual(values, r1)
+		}
+		
+		try BytesReader.parse(data: d1) { reader in
+			let r1 = try reader.readInt8()
+			let r2 = try reader.readInt8()
+			let r3 = try reader.readInt8()
+			XCTAssertEqual(values, [r1, r2, r3])
+		}
+	}
+
+	func testUInt8() throws {
+		let values: [UInt8] = [0, 37, 127, 245]
+
+		let d1 = try BytesWriter.assemble { writer in
+			try writer.writeUInt8(values)
+		}
+
+		try BytesReader.parse(data: d1) { reader in
+			let r1 = try reader.readUInt8(count: values.count)
+			XCTAssertEqual(values, r1)
+		}
+
+		try BytesReader.parse(data: d1) { reader in
+			let r1 = try reader.readUInt8()
+			let r2 = try reader.readUInt8()
+			let r3 = try reader.readUInt8()
+			let r4 = try reader.readUInt8()
+			XCTAssertEqual(values, [r1, r2, r3, r4])
+		}
+	}
 }

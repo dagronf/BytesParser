@@ -33,7 +33,7 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - count: The number of bool to read
 	/// - Returns: An array of bool
-	@inlinable func readBool(_ count: Int) throws -> [Bool] {
+	@inlinable func readBool(count: Int) throws -> [Bool] {
 		assert(count > 0)
 		let data = try readData(count: count)
 		return data.map { $0 != 0x00 }

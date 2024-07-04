@@ -49,6 +49,16 @@ public extension BytesReader {
 		Int8(bitPattern: try self.readByte())
 	}
 
+	/// Read an array of integer values
+	/// - Parameter count: The number of values to read
+	/// - Returns: An array of integers
+	@inlinable func readInt8(count: Int) throws -> [Int8] {
+		let bytes = try self.readBytes(count: count)
+
+		// Remap the UInt8 value to an Int8 value
+		return bytes.map { Int8(bitPattern: $0) }
+	}
+
 	/// Read an Int16 value
 	/// - Parameter byteOrder: The expected endianness for the integer
 	/// - Returns: An integer
@@ -104,6 +114,13 @@ public extension BytesReader {
 	/// Read a UInt8 value
 	@inlinable func readUInt8() throws -> UInt8 {
 		return try self.readByte()
+	}
+
+	/// Read an array of UInt8 values
+	/// - Parameter count: The number of values to read
+	/// - Returns: An array of unsigned integers
+	@inlinable func readUInt8(count: Int) throws -> [UInt8] {
+		try self.readBytes(count: count)
 	}
 
 	/// Read a UInt16 value

@@ -44,7 +44,7 @@ public extension BytesReader {
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: A data object containing the read bytes
 	func readData(count: Int) throws -> Data {
-		guard count > 0 else { return Data() }
+		assert(count > 0)
 		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
 
 		// Make sure our internal buffer is big enough to hold all the data required
