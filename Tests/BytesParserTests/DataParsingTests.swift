@@ -248,15 +248,18 @@ final class ByteIterableTests: XCTestCase {
 			let magic = try parser.readString(.ascii, length: 12, lengthIncludesTerminator: true)
 			XCTAssertEqual(magic, "ACROSS&DOWN")
 
-			let /*cksum_cib*/ _: Int16 = try parser.readInteger(.little)
+			let /*cksum_cib*/ _  = try parser.readUInt16(.little)
 			let /*magic10*/ _ = try parser.readBytes(count: 4)
 			let /*magic14*/ _ = try parser.readBytes(count: 4)
-			let /*magic18*/ _ = try parser.readBytes(count: 4)
+			//let /*magic18*/ _ = try parser.readBytes(count: 4)
+			let versionString = try parser.readStringASCII(length: 4)
+			XCTAssertEqual(4, versionString.count)
+			XCTAssertEqual("1.3\0", versionString)
 
-			let /*noise_1c*/ _: Int16 = try parser.readInteger(.little)
-			let /*scrambled_tag*/ _: Int16 = try parser.readInteger(.little)
+			let /*noise_1c*/ _ = try parser.readInt16(.little)
+			let /*scrambled_tag*/ _ = try parser.readInt16(.little)
 
-			let noise: [Int16] = try parser.readInteger(6, .little)
+			let noise = try parser.readInt16(.little, count: 6)
 			XCTAssertEqual(6, noise.count)
 
 //			let /*noise_20*/ _: Int16 = try parser.readInteger(.little)
@@ -271,10 +274,10 @@ final class ByteIterableTests: XCTestCase {
 			let height = Int(try parser.readByte())
 			XCTAssertEqual(21, height)
 
-			let clue_count: UInt16 = try parser.readInteger(.little)
+			let clue_count: UInt16 = try parser.readUInt16(.little)
 			XCTAssertEqual(142, clue_count)
-			let /*grid_type*/ _: UInt16 = try parser.readInteger(.little)
-			let /*grid_flag*/ _: UInt16 = try parser.readInteger(.little)
+			let /*grid_type*/ _ = try parser.readUInt16(.little)
+			let /*grid_flag*/ _ = try parser.readUInt16(.little)
 
 			let solution = try parser.readBytes(count: width * height)
 			XCTAssertEqual(441, solution.count)

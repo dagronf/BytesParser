@@ -199,4 +199,131 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertThrowsError(try parser.readByte())
 		}
 	}
+
+	func testWritingFloatValues() throws {
+		do {
+			let value: Float32 = 1234.5678
+			let w = try BytesWriter()
+			try w.writeFloat32(value, .big)
+
+			let r = BytesParser(data: try w.data())
+			let rv = try r.readFloat32(.big)
+			XCTAssertEqual(value, rv)
+		}
+
+		do {
+			let value: Float64 = 1234.5678
+			let w = try BytesWriter()
+			try w.writeFloat64(value, .big)
+
+			let r = BytesParser(data: try w.data())
+			let rv = try r.readFloat64(.big)
+			XCTAssertEqual(value, rv)
+		}
+
+		do {
+			let value1: Float64 = 1234.5678
+			let value2: Float64 = 8765.4321
+			let w = try BytesWriter()
+			try w.writeFloat64(value1, .big)
+			try w.writeFloat64(value2, .big)
+
+			let r = BytesParser(data: try w.data())
+			let rv1 = try r.readFloat64(.big)
+			let rv2 = try r.readFloat64(.big)
+			XCTAssertEqual(value1, rv1)
+			XCTAssertEqual(value2, rv2)
+		}
+
+		do {
+			let value1: Float64 = 1234.5678
+			let value2: Float64 = 8765.4321
+			let w = try BytesWriter()
+			try w.writeFloat64(value1, .big)
+			try w.writeFloat64(value2, .little)
+
+			let r = BytesParser(data: try w.data())
+			let rv1 = try r.readFloat64(.big)
+			let rv2 = try r.readFloat64(.little)
+			XCTAssertEqual(value1, rv1)
+			XCTAssertEqual(value2, rv2)
+		}
+
+		do {
+			let value1: [Float32] = [1234.5678, 8765.4321]
+			let w = try BytesWriter()
+			try w.writeFloat32(value1, .big)
+			let r = BytesParser(data: try w.data())
+			let rv1 = try r.readFloat32(.big, count: 2)
+			XCTAssertEqual(value1, rv1)
+		}
+	}
+
+	func testWritingFloat32ArrayValues() throws {
+		let vals: [Float32] = [1451.2224, 1.2, 9999.9]
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeFloat32(vals, .big)
+			try writer.writeFloat32(vals, .little)
+		}
+
+		try BytesParser.parse(data: data) { parser in
+			let v1 = try parser.readFloat32(.big, count: vals.count)
+			let v2 = try parser.readFloat32(.little, count: vals.count)
+
+			XCTAssertEqual(vals, v1)
+			XCTAssertEqual(vals, v2)
+		}
+	}
+
+	func testWritingFloat64ArrayValues() throws {
+		let vals: [Float64] = [
+			51.43243344285539,
+			51.92791316776663,
+			45.04754409242326,
+			28.77642913403846,
+			58.21730813384373
+		]
+		let data = try BytesWriter.assemble() { writer in
+			try writer.writeFloat64(vals, .big)
+			try writer.writeFloat64(vals, .little)
+		}
+
+		try BytesParser.parse(data: data) { parser in
+			let v1 = try parser.readFloat64(.big, count: vals.count)
+			let v2 = try parser.readFloat64(.little, count: vals.count)
+
+			XCTAssertEqual(vals, v1)
+			XCTAssertEqual(vals, v2)
+		}
+
+		try BytesParser.parse(data: data) { parser in
+			let v1 = try parser.readFloat64(.little, count: vals.count)
+			let v2 = try parser.readFloat64(.big, count: vals.count)
+
+			XCTAssertNotEqual(vals, v1)
+			XCTAssertNotEqual(vals, v2)
+		}
+	}
+
+	func testWriteDataChunks() throws {
+		let raw: [UInt8] = (0 ..< 1_000_000).map { index in
+			return UInt8(index % 256)
+		}
+
+		let data = try BytesWriter.assemble { w in
+			try w.writeBytes(raw)
+			try w.writeInt16(123, .little)
+		}
+
+		try BytesParser.parse(data: data) { r in
+			let rw = try r.readBytes(count: raw.count)
+			XCTAssertEqual(raw, rw)
+
+			let i = try r.readInt16(.little)
+			XCTAssertEqual(123, i)
+
+			// Should not have any more data
+			XCTAssertThrowsError(try r.readByte())
+		}
+	}
 }

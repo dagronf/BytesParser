@@ -46,14 +46,14 @@ The closure based API hides some of the complexity of opening/closing a bytes fi
 ```swift
 // Parsing a (local) crossword file
 try BytesParser.parse(fileURL: url) { parser in
-   let checksum: UInt16 = try parser.readInteger(.little)
+   let checksum = try parser.readUInt16(.little)
    let magic = try parser.readString(length: 12, encoding: .ascii, lengthIncludesTerminator: true)
    assert(magic, "ACROSS&DOWN")
 
    let width = try parser.readInt8()
    let height = try parser.readInt8()
 
-   let clueCount: UInt16 = try parser.readInteger(.little)
+   let clueCount = try parser.readUInt16(.little)
    ...
    let title = try parser.readStringNullTerminated(encoding: .ascii)
 }

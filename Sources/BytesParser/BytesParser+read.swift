@@ -31,6 +31,13 @@ public extension BytesParser {
 		return self.readBuffer.buffer.pointee
 	}
 
+	/// Read the next `count` bytes into a byte array
+	/// - Parameter count: The number of bytes to read
+	/// - Returns: An array of bytes
+	@inlinable func readBytes(count: Int) throws -> [UInt8] {
+		try Array(self.readData(count: count))
+	}
+
 	/// Read the next `count` bytes into a Data object
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: A data object containing the read bytes
@@ -41,7 +48,7 @@ public extension BytesParser {
 		// Make sure our internal buffer is big enough to hold all the data required
 		self.readBuffer.requireSize(count)
 
-		var result = Data()
+		var result = Data(capacity: count)
 
 		// Loop until we've read all the required data
 		var read = 0
@@ -68,7 +75,9 @@ public extension BytesParser {
 		self.offset += count
 		return result
 	}
+}
 
+public extension BytesParser {
 	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
 	/// - Parameter byte: The byte to use as the terminator
 	/// - Returns: A data object containing the read bytes
@@ -93,6 +102,14 @@ public extension BytesParser {
 		}
 	}
 
+	/// Read up to **and including** the next instance of a **single** null byte (0x00)
+	/// - Returns: A data object containing the read bytes
+	@inlinable func readUpToNextNullByte() throws -> Data {
+		try self.readUpToNextInstanceOfByte(0x00)
+	}
+}
+
+public extension BytesParser {
 	/// Read all of the remaining data in the source.
 	///
 	/// After this call, any further reads will throw (end of data)
