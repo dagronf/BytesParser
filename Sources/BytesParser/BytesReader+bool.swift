@@ -21,7 +21,7 @@ import Foundation
 
 // MARK: Bool (byte based)
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a 'bool' value byte from the stream
 	///
 	/// `0x00` -> `false`, anything else -> `true`

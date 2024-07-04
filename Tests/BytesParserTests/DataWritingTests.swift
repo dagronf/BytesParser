@@ -44,14 +44,14 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(3, data.count)
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			// Map byte to a Int8
 			XCTAssertEqual(-10, try parser.readInt8())
 			XCTAssertEqual(10, try parser.readInt8())
 			XCTAssertEqual(-22, try parser.readInt8())
 		}
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			XCTAssertEqual(246, try parser.readUInt8())
 			XCTAssertEqual(10, try parser.readUInt8())
 			XCTAssertEqual(234, try parser.readUInt8())
@@ -64,7 +64,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeUInt16(101, .little) // 2
 			try writer.writeUInt32(77688, .big)  // 4
 			try writer.writeUInt16(2987, .little)  // 2
-			try writer.writeByteString("abcd", encoding: .ascii) // 4
+			try writer.writeStringByte("abcd", encoding: .ascii) // 4
 			try writer.writeBool(true) // 1
 			try writer.writeFloat64(12345.12345, .big) // 8
 			try writer.writeBool(false) // 1
@@ -73,14 +73,14 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(23, out.count)
 
-		let p = BytesParser(data: out)
+		let p = BytesReader(data: out)
 		let v1: UInt16 = try p.readInteger(.little)
 		XCTAssertEqual(101, v1)
 		let v2: UInt32 = try p.readInteger(.big)
 		XCTAssertEqual(77688, v2)
 		let v3: UInt16 = try p.readInteger(.little)
 		XCTAssertEqual(2987, v3)
-		XCTAssertEqual("abcd", try p.readString(.ascii, length: 4))
+		XCTAssertEqual("abcd", try p.readStringASCII(length: 4))
 
 		XCTAssertEqual(true, try p.readBool())
 		XCTAssertEqual(12345.12345, try p.readFloat64(.big))
@@ -101,27 +101,27 @@ final class DataWritingTests: XCTestCase {
 				try writer.writeUInt16(101, .little)
 				try writer.writeUInt32(77688, .big)
 				try writer.writeUInt16(2987, .little)
-				try writer.writeByteString("abcd", encoding: .ascii)
+				try writer.writeStringByte("abcd", encoding: .ascii)
 				try writer.writeBool(true)
-				try writer.writeByteStringNullTerminated(message, encoding: .utf8)
+				try writer.writeStringUTF8(message, includeNullTerminator: true)
 				try writer.writeFloat64(12345.12345, .big)
 				try writer.writeBool(false)
 				try writer.writeUInt8(254)
 			}
 
 			// Now, try to read it back in
-			try BytesParser.parse(fileURL: fileURL) { parser in
+			try BytesReader.parse(fileURL: fileURL) { parser in
 				let v1: UInt16 = try parser.readInteger(.little)
 				XCTAssertEqual(101, v1)
 				let v2: UInt32 = try parser.readInteger(.big)
 				XCTAssertEqual(77688, v2)
 				let v3: UInt16 = try parser.readInteger(.little)
 				XCTAssertEqual(2987, v3)
-				XCTAssertEqual("abcd", try parser.readString(.ascii, length: 4))
+				XCTAssertEqual("abcd", try parser.readStringASCII(length: 4))
 
 				XCTAssertEqual(true, try parser.readBool())
 
-				let msg = try parser.readStringNullTerminated(.utf8)
+				let msg = try parser.readStringUTF8NullTerminated()
 				XCTAssertEqual(message, msg)
 
 				XCTAssertEqual(12345.12345, try parser.readFloat64(.big))
@@ -142,7 +142,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readUInt32(.big))
 			XCTAssertThrowsError(try parser.readByte())
 		}
@@ -156,7 +156,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			XCTAssertEqual(true, try parser.readBool())
 			XCTAssertEqual(0xff, try parser.readByte())
 			XCTAssertEqual(0xff, try parser.readByte())
@@ -174,7 +174,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0x0, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -192,7 +192,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0xcd, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -206,7 +206,7 @@ final class DataWritingTests: XCTestCase {
 			let w = try BytesWriter()
 			try w.writeFloat32(value, .big)
 
-			let r = BytesParser(data: try w.data())
+			let r = BytesReader(data: try w.data())
 			let rv = try r.readFloat32(.big)
 			XCTAssertEqual(value, rv)
 		}
@@ -216,7 +216,7 @@ final class DataWritingTests: XCTestCase {
 			let w = try BytesWriter()
 			try w.writeFloat64(value, .big)
 
-			let r = BytesParser(data: try w.data())
+			let r = BytesReader(data: try w.data())
 			let rv = try r.readFloat64(.big)
 			XCTAssertEqual(value, rv)
 		}
@@ -228,7 +228,7 @@ final class DataWritingTests: XCTestCase {
 			try w.writeFloat64(value1, .big)
 			try w.writeFloat64(value2, .big)
 
-			let r = BytesParser(data: try w.data())
+			let r = BytesReader(data: try w.data())
 			let rv1 = try r.readFloat64(.big)
 			let rv2 = try r.readFloat64(.big)
 			XCTAssertEqual(value1, rv1)
@@ -242,7 +242,7 @@ final class DataWritingTests: XCTestCase {
 			try w.writeFloat64(value1, .big)
 			try w.writeFloat64(value2, .little)
 
-			let r = BytesParser(data: try w.data())
+			let r = BytesReader(data: try w.data())
 			let rv1 = try r.readFloat64(.big)
 			let rv2 = try r.readFloat64(.little)
 			XCTAssertEqual(value1, rv1)
@@ -253,7 +253,7 @@ final class DataWritingTests: XCTestCase {
 			let value1: [Float32] = [1234.5678, 8765.4321]
 			let w = try BytesWriter()
 			try w.writeFloat32(value1, .big)
-			let r = BytesParser(data: try w.data())
+			let r = BytesReader(data: try w.data())
 			let rv1 = try r.readFloat32(.big, count: 2)
 			XCTAssertEqual(value1, rv1)
 		}
@@ -266,7 +266,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeFloat32(vals, .little)
 		}
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			let v1 = try parser.readFloat32(.big, count: vals.count)
 			let v2 = try parser.readFloat32(.little, count: vals.count)
 
@@ -288,7 +288,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeFloat64(vals, .little)
 		}
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			let v1 = try parser.readFloat64(.big, count: vals.count)
 			let v2 = try parser.readFloat64(.little, count: vals.count)
 
@@ -296,7 +296,7 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertEqual(vals, v2)
 		}
 
-		try BytesParser.parse(data: data) { parser in
+		try BytesReader.parse(data: data) { parser in
 			let v1 = try parser.readFloat64(.little, count: vals.count)
 			let v2 = try parser.readFloat64(.big, count: vals.count)
 
@@ -315,7 +315,7 @@ final class DataWritingTests: XCTestCase {
 			try w.writeInt16(123, .little)
 		}
 
-		try BytesParser.parse(data: data) { r in
+		try BytesReader.parse(data: data) { r in
 			let rw = try r.readBytes(count: raw.count)
 			XCTAssertEqual(raw, rw)
 

@@ -20,20 +20,10 @@
 import Foundation
 
 public class BytesWriter {
-	/// Errors throws by the writer
-	public enum WriterError: Error {
-		case cannotConvertStringEncoding
-		case cannotOpenOutputFile
-		case unableToWriteBytes
-		case emptyBuffer
-		case notSupported
-		case noDataAvailable
-	}
-
 	internal let outputStream: OutputStream
 
 	/// The number of bytes currently written to the output
-	public private(set) var count: Int = 0
+	public internal(set) var count: Int = 0
 
 	/// Create a byte writer that writes to a Data() object destination
 	public init() throws {
@@ -64,46 +54,6 @@ public class BytesWriter {
 			throw BytesWriter.WriterError.noDataAvailable
 		}
 		return data
-	}
-}
-
-// MARK: - Data and bytes
-
-public extension BytesWriter {
-	/// Write the contents of a Data object to the destination
-	/// - Parameter data: The data to write
-	func writeData(_ data: Data) throws {
-		try data.withUnsafeBytes { try self.writeBuffer($0, byteCount: data.count) }
-	}
-
-	/// Write an array of bytes to the destination
-	/// - Parameter bytes: An array of bytes to write
-	func writeBytes(_ bytes: [UInt8]) throws {
-		let writtenCount = self.outputStream.write(bytes, maxLength: bytes.count)
-		guard writtenCount == bytes.count else {
-			throw BytesWriter.WriterError.unableToWriteBytes
-		}
-		self.count += bytes.count
-	}
-
-	/// Write a single byte to the destination
-	@inlinable func writeByte(_ byte: UInt8) throws {
-		try self.writeBytes([byte])
-	}
-}
-
-internal extension BytesWriter {
-	/// Write the contents of a raw buffer pointer to the destination
-	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws {
-		guard byteCount > 0 else { return }
-		guard let buffer = buffer.baseAddress else {
-			throw BytesWriter.WriterError.emptyBuffer
-		}
-
-		let ptr = buffer.assumingMemoryBound(to: UInt8.self)
-		let written = self.outputStream.write(ptr, maxLength: byteCount)
-		guard written == byteCount else { throw BytesWriter.WriterError.unableToWriteBytes }
-		self.count += byteCount
 	}
 }
 

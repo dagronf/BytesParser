@@ -21,13 +21,13 @@ import Foundation
 
 // MARK: Float values
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read in an IEEE 754 float32 value
 	/// - Parameter byteOrder: The endianness of the input value
 	/// - Returns: A Float32 value
 	///
 	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
-	func readFloat32(_ byteOrder: Endianness) throws -> Float32 {
+	func readFloat32(_ byteOrder: BytesParser.Endianness) throws -> Float32 {
 		return Float32(bitPattern: try readUInt32(byteOrder))
 	}
 
@@ -36,7 +36,7 @@ public extension BytesParser {
 	///   - byteOrder: The byte order of the float values
 	///   - count: The number of Float32 values to read
 	/// - Returns: An array of float values
-	@inlinable func readFloat32(_ byteOrder: Endianness, count: Int) throws -> [Float32] {
+	@inlinable func readFloat32(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Float32] {
 		assert(count > 0)
 		let values = try readUInt32(byteOrder, count: count)
 		return values.map { Float32(bitPattern: $0) }
@@ -47,7 +47,7 @@ public extension BytesParser {
 	/// - Returns: A Float64 value
 	///
 	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
-	@inlinable func readFloat64(_ byteOrder: Endianness) throws -> Float64 {
+	@inlinable func readFloat64(_ byteOrder: BytesParser.Endianness) throws -> Float64 {
 		Float64(bitPattern: try readUInt64(byteOrder))
 	}
 
@@ -56,9 +56,29 @@ public extension BytesParser {
 	///   - byteOrder: The byte order of the float values
 	///   - count: The number of Float64 values to read
 	/// - Returns: An array of float values
-	@inlinable func readFloat64(_ byteOrder: Endianness, count: Int) throws -> [Float64] {
+	@inlinable func readFloat64(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Float64] {
 		assert(count > 0)
 		let values = try readUInt64(byteOrder, count: count)
 		return values.map { Float64(bitPattern: $0) }
+	}
+}
+
+public extension BytesReader {
+	/// Read a double (64-bit) value
+	/// - Parameter byteOrder: The byte order
+	/// - Returns: A double value
+	func readDouble(_ byteOrder: BytesParser.Endianness) throws -> Double {
+		Float64(bitPattern: try readUInt64(byteOrder))
+	}
+
+	/// Read an array of Double values
+	/// - Parameters:
+	///   - byteOrder: The byte order
+	///   - count: The number of Double values to read
+	/// - Returns: An array of double values
+	@inlinable func readDouble(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Double] {
+		assert(count > 0)
+		let values = try readUInt64(byteOrder, count: count)
+		return values.map { Double(bitPattern: $0) }
 	}
 }

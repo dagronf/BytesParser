@@ -19,101 +19,81 @@
 
 import Foundation
 
-/// An object that can iterate through raw byte data and extract parsable data (eg. integers, floats etc)
 public class BytesParser {
+	/// UTF-8 BOM
+	public static let BOMUTF8: [UInt8] = [0xef, 0xbb, 0xbf]
+	/// UTF-16 Little Endian BOM
+	public static let BOMUTF16LE: [UInt8] = [0xff, 0xfe]
+	/// UTF-16 Big Endian BOM
+	public static let BOMUTF16BE: [UInt8] = [0xfe, 0xff]
+
+	public static let terminator8: UInt8 = 0x00
+	public static let terminator16: [UInt8] = [0x00, 0x00]
+	public static let terminator32: [UInt8] = [0x00, 0x00, 0x00, 0x00]
+}
+
+public extension BytesReader {
 	/// Errors thrown by the parser
-	public enum ParseError: Error {
+	enum ParseError: Error {
 		case invalidFile
 		case endOfData
 		case invalidStringEncoding
 	}
-
-	/// Is there more data to read?
-	public var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
-
-	/// The current read offset within the source
-	public internal(set) var offset: Int = 0
-
-	/// Create a byte parser from a data object
-	public init(data: Data) {
-		self.inputStream = InputStream(data: data)
-		self.inputStream.open()
-	}
-
-	/// Create a byte parser from an array of bytes
-	public init(content: [UInt8]) {
-		self.inputStream = InputStream(data: Data(content))
-		self.inputStream.open()
-	}
-
-	/// Create a byte parser with an opened input stream
-	public init(inputStream: InputStream) {
-		self.inputStream = inputStream
-		self.inputStream.open()
-	}
-
-	/// Create a byte parser from the contents of a local file
-	public init(fileURL: URL) throws {
-		guard
-			fileURL.isFileURL,
-			let inputStream = InputStream(url: fileURL)
-		else {
-			throw ParseError.invalidFile
-		}
-		self.inputStream = inputStream
-		inputStream.open()
-	}
-
-	// private
-	let readBuffer = ByteBuffer()
-
-	// The stream containing the data to be parsed
-	let inputStream: InputStream
 }
 
-// MARK: - Convenience readers
+public extension BytesWriter {
+	/// Errors throws by the writer
+	enum WriterError: Error {
+		case cannotConvertStringEncoding
+		case cannotOpenOutputFile
+		case unableToWriteBytes
+		case emptyBuffer
+		case notSupported
+		case noDataAvailable
+	}
+}
 
 public extension BytesParser {
-	/// Parse the contents of a `Data` object
-	/// - Parameters:
-	///   - data: The data object to parse
-	///   - block: The block containing the parsing calls
-	@inlinable static func parse(data: Data, _ block: (BytesParser) throws -> Void) throws {
-		let parser = BytesParser(data: data)
-		try block(parser)
-	}
-
-	/// Parse the contents of a byte array
-	/// - Parameters:
-	///   - bytes: An array of bytes to parse
-	///   - block: The block containing the parsing calls
-	@inlinable static func parse(bytes: [UInt8], _ block: (BytesParser) throws -> Void) throws {
-		let parser = BytesParser(content: bytes)
-		try block(parser)
-	}
-
-	/// Parse the contents of a local file
-	/// - Parameters:
-	///   - fileURL: The local file URL to read from
-	///   - block: The block containing the parsing calls
-	@inlinable static func parse<ResultType>(fileURL: URL, _ block: (BytesParser) throws -> ResultType) throws -> ResultType {
-		let parser = try BytesParser(fileURL: fileURL)
-		return try block(parser)
-	}
-
-	/// Parse the contents of an input stream
-	/// - Parameters:
-	///   - inputStream: The stream to read from
-	///   - block: The block containing the parsing calls
-	@inlinable static func parse(inputStream: InputStream, _ block: (BytesParser) throws -> Void) throws {
-		let parser = BytesParser(inputStream: inputStream)
-		try block(parser)
-	}
-
-	/// Read all remaining data in the input stream
-	/// - Parameter inputStream: The inputstream to read from
-	/// - Returns: A data object containing the read data
-	@inlinable static func data(inputStream: InputStream) throws -> Data {
-		try BytesParser(inputStream: inputStream).readAllRemainingData()
+	/// Endian types
+	enum Endianness {
+		/// Big endian
+		case big
+		/// Little endian
+		case little
 	}
 }
+
+extension BytesParser.Endianness {
+	/// Convert an array of bytes to a fixed width integer value following the endianness rules
+	@inlinable public func convert<T: FixedWidthInteger>(_ intData: Data) -> T {
+		assert(intData.count == MemoryLayout<T>.size)
+		let value = intData.withUnsafeBytes { $0.load(as: T.self) }
+		return self == .big ? value.bigEndian : value.littleEndian
+	}
+
+	/// Convert an array of bytes to a fixed width integer value following the endianness rules
+	@inlinable public func convert<T: FixedWidthInteger>(_ intData: Data, count: Int) -> [T] {
+		assert(intData.count == (MemoryLayout<T>.size * count))
+		return stride(from: 0, to: count, by: 1).map { offset in
+			let value = intData.withUnsafeBytes { $0.load(fromByteOffset: offset * MemoryLayout<T>.size, as: T.self) }
+			return self == .big ? value.bigEndian : value.littleEndian
+		}
+	}
+}
+
+// #if _endian(big)
+// print("Big-endian")
+// #elseif _endian(little)
+// print("Little-endian")
+// #endif
+
+//		switch self {
+//		case .big:
+//			return intData.reduce(0) { soFar, byte in
+//				return soFar << 8 | T(byte)
+//			}
+//		case .little:
+//			return intData.reversed().reduce(0) { soFar, byte in
+//				return soFar << 8 | T(byte)
+//			}
+//		}

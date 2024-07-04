@@ -19,14 +19,16 @@
 
 import Foundation
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a single byte from the input stream
 	/// - Returns: A byte
 	func readByte() throws -> UInt8 {
-		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else {
+			throw BytesReader.ParseError.endOfData
+		}
 		self.readBuffer.requireSize(1)
 		let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
-		guard readCount == 1 else { throw BytesParser.ParseError.endOfData }
+		guard readCount == 1 else { throw BytesReader.ParseError.endOfData }
 		self.offset += 1
 		return self.readBuffer.buffer.pointee
 	}
@@ -43,7 +45,7 @@ public extension BytesParser {
 	/// - Returns: A data object containing the read bytes
 	func readData(count: Int) throws -> Data {
 		guard count > 0 else { return Data() }
-		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
 
 		// Make sure our internal buffer is big enough to hold all the data required
 		self.readBuffer.requireSize(count)
@@ -56,12 +58,12 @@ public extension BytesParser {
 			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: count - read)
 			if readCount < 0 {
 				// The operation failed
-				throw BytesParser.ParseError.endOfData
+				throw BytesReader.ParseError.endOfData
 			}
 			if readCount == 0, !self.inputStream.hasBytesAvailable {
 				// If we haven't read anything and there's no more data to read,
 				// then we're at the end of file
-				throw BytesParser.ParseError.endOfData
+				throw BytesReader.ParseError.endOfData
 			}
 
 			if readCount > 0 {
@@ -77,12 +79,12 @@ public extension BytesParser {
 	}
 }
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
 	/// - Parameter byte: The byte to use as the terminator
 	/// - Returns: A data object containing the read bytes
 	func readUpToNextInstanceOfByte(_ byte: UInt8) throws -> Data {
-		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
 
 		// We are reading 1 byte at a time (not overly optimal!)
 		self.readBuffer.requireSize(1)
@@ -109,13 +111,13 @@ public extension BytesParser {
 	}
 }
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read all of the remaining data in the source.
 	///
 	/// After this call, any further reads will throw (end of data)
 	func readAllRemainingData() throws -> Data {
 		// If the stream has no data available throw endOfData
-		guard self.inputStream.hasBytesAvailable else { throw BytesParser.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
 
 		// The chunk size for reading to the end of the file
 		let CHUNK_SZ = 16384
@@ -128,7 +130,7 @@ public extension BytesParser {
 			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: CHUNK_SZ)
 			if readCount < 0 {
 				// -1 means that the operation failed
-				throw BytesParser.ParseError.endOfData
+				throw BytesReader.ParseError.endOfData
 			}
 
 			self.offset += readCount

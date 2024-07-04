@@ -21,7 +21,7 @@ import Foundation
 
 // MARK: Integer values
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read an integer value
 	/// - Parameter byteOrder: Expected endianness for the integer
 	/// - Returns: An integer value
@@ -42,7 +42,7 @@ public extension BytesParser {
 	}
 }
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read an Int8 value
 	@inlinable func readInt8() throws -> Int8 {
 		// Remap the UInt8 value to an Int8 value
@@ -100,7 +100,7 @@ public extension BytesParser {
 
 // MARK: Unsigned integer values
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a UInt8 value
 	@inlinable func readUInt8() throws -> UInt8 {
 		return try self.readByte()

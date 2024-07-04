@@ -55,3 +55,22 @@ public extension BytesWriter {
 		try self.writeInteger(bitpats, byteOrder)
 	}
 }
+
+public extension BytesWriter {
+	/// Write a double value to the stream using the IEEE 754 specification
+	/// - Parameters:
+	///   - value: The value to write
+	///   - byteOrder: The byte order to apply when writing
+	@inlinable func writeDouble(_ value: Double, _ byteOrder: BytesParser.Endianness) throws {
+		try self.writeInteger(value.bitPattern, byteOrder)
+	}
+
+	/// Write an array of double values to the stream using the IEEE 754 specification
+	/// - Parameters:
+	///   - value: The values to write
+	///   - byteOrder: The byte order to apply
+	@inlinable func writeDouble(_ value: [Double], _ byteOrder: BytesParser.Endianness) throws {
+		let bitpats: [UInt64] = value.map { $0.bitPattern }
+		try self.writeInteger(bitpats, byteOrder)
+	}
+}

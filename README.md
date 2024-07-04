@@ -25,16 +25,16 @@ from binary data.
 ### Using a BytesParser Object 
 
 ```swift
-let parser = BytesParser(data: <some data object>)
+let reader = BytesReader(data: <some data object>)
 
 // The magic identifier for the file is an 8-byte ascii string (not null terminated)
-let magic = try parser.readString(length: 8, encoding: .ascii)
+let magic = try reader.readString(length: 8, encoding: .ascii)
 assert("8BCBAFFE", magic)
 
 // Read 12-character little-endian encoded WCS2 (UTF16) string 
-let title = try parser.readUTF16String(.little, length: 12)
-let length = try parser.readInt16(.little)
-let offset = try parser.readInt32(.little)
+let title = try reader.readUTF16String(.little, length: 12)
+let length = try reader.readInt16(.little)
+let offset = try reader.readInt32(.little)
 ```
 
 ### Closure based
@@ -45,9 +45,9 @@ The closure based API hides some of the complexity of opening/closing a bytes fi
 
 ```swift
 // Parsing a (local) crossword file
-try BytesParser.parse(fileURL: url) { parser in
+try BytesReader.parse(fileURL: url) { parser in
    let checksum = try parser.readUInt16(.little)
-   let magic = try parser.readString(length: 12, encoding: .ascii, lengthIncludesTerminator: true)
+   let magic = try parser.readStringASCII(length: 12, lengthIncludesTerminator: true)
    assert(magic, "ACROSS&DOWN")
 
    let width = try parser.readInt8()
@@ -109,7 +109,7 @@ try BytesWriter.assemble(fileURL: fileURL) { writer in
 	// > Write message length (big-endian UInt32)
    try writer.writeUInt32(...message length in UTF32 chars..., .bigEndian)
    // > Write out the message in a big-endian, UTF32 format
-   try writer.writeWide32String(message, encoding: .utf32BigEndian)
+   try writer.writeStringUTF32BE(message)
 
    // Write a 'data' block
 	// > Write out the block type identifier
@@ -131,7 +131,7 @@ try BytesWriter.assemble(fileURL: fileURL) { writer in
 ```
 MIT License
 
-Copyright (c) 2023 Darren Ford
+Copyright (c) 2024 Darren Ford
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

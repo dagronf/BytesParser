@@ -19,42 +19,37 @@
 
 import Foundation
 
-/// UTF-8 BOM
-public let BOMUTF8: [UInt8] = [0xef, 0xbb, 0xbf]
-/// UTF-16 Little Endian BOM
-public let BOMUTF16LE: [UInt8] = [0xff, 0xfe]
-/// UTF-16 Big Endian BOM
-public let BOMUTF16BE: [UInt8] = [0xfe, 0xff]
-
-internal let terminator16: [UInt8] = [0x00, 0x00]
-internal let terminator32: [UInt8] = [0x00, 0x00, 0x00, 0x00]
-
 // MARK: - String conveniences
 
-public extension BytesParser {
-	/// Read a string (byte-based) using a length and string encoding
+public extension BytesReader {
+	/// Read a string (single byte based) using a length and string encoding
 	/// - Parameters:
-	///   - encoding: The string encoding to use when reading
+	///   - encoding: The string encoding to use when reading. This must be a single-byte encoding type
 	///   - length: The expected number of characters in the string
 	///   - lengthIncludesTerminator: If true, assumes that the _last_ character in the string is the null terminator.
 	/// - Returns: A string
-	func readString(_ encoding: String.Encoding, length: Int, lengthIncludesTerminator: Bool = false) throws -> String {
+	func readStringSingleByteEncoding(
+		_ encoding: String.Encoding,
+		length: Int,
+		lengthIncludesTerminator: Bool = false
+	) throws -> String {
 		var stringData = try self.readData(count: length)
 		if lengthIncludesTerminator, stringData.last == 0x00 {
 			stringData = stringData.dropLast(1)
 		}
 		guard let str = String(data: stringData, encoding: encoding) else {
-			throw ParseError.invalidStringEncoding
+			throw BytesReader.ParseError.invalidStringEncoding
 		}
 		return str
 	}
 
 	/// Read a string (single byte based) up to the string's null terminator
-	/// - Parameter encoding: The expected string encoding (assumes a single-byte encoding)
+	/// - Parameter encoding: The expected string encoding. This must be a single-byte encoding type
 	/// - Returns: A string
 	///
 	/// NOTE: Slower as we have to read byte-by-byte. Also less safe than the length specific version!
-	func readStringNullTerminated(_ encoding: String.Encoding) throws -> String {
+	func readStringSingleByteEncodingNullTerminated(_ encoding: String.Encoding) throws -> String {
+		// Read data up to the next instance of the (single-byte) string terminator
 		var rawContent = try readUpToNextInstanceOfByte(0x00)
 		if rawContent.last == 0x00 {
 			// Remove the last terminator character
@@ -62,45 +57,56 @@ public extension BytesParser {
 			rawContent = rawContent.dropLast()
 		}
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw ParseError.invalidStringEncoding
+			throw BytesReader.ParseError.invalidStringEncoding
 		}
 		return str
 	}
 }
 
-public extension BytesParser {
-	/// Read a UTF8 string using a byte count
-	/// - Parameters:
-	///   - byteCount: The number of bytes containing the string
-	///   - lengthIncludesTerminator: If true, assumes that the _last_ character in the string is the null terminator.
-	/// - Returns: A string
-	@inlinable func readStringUTF8(byteCount: Int, lengthIncludesTerminator: Bool = false) throws -> String {
-		try self.readString(.utf8, length: byteCount, lengthIncludesTerminator: lengthIncludesTerminator)
-	}
-
+public extension BytesReader {
 	/// Read an ASCII string
 	/// - Parameters:
-	///   - length: The number of characters to read
-	///   - lengthIncludesTerminator: If true, assumes that the _last_ character in the string is the null terminator.
+	///   - length: The number of single-byte characters to read
+	///   - lengthIncludesTerminator: If true, assumes that the _last_ character in the string is a null terminator.
 	/// - Returns: A string
 	@inlinable func readStringASCII(length: Int, lengthIncludesTerminator: Bool = false) throws -> String {
-		try self.readString(.ascii, length: length, lengthIncludesTerminator: lengthIncludesTerminator)
+		try self.readStringSingleByteEncoding(.ascii, length: length, lengthIncludesTerminator: lengthIncludesTerminator)
 	}
 
 	/// Read an ASCII string up to the string's null terminator
+	///
+	/// NOTE: Unsafe as it's possible that the null character doesn't appear in the input stream, which
+	/// would blow out memory if the stream is huge.
 	@inlinable func readStringASCIINullTerminated() throws -> String {
-		try self.readStringNullTerminated(.ascii)
+		try self.readStringSingleByteEncodingNullTerminated(.ascii)
+	}
+}
+
+
+public extension BytesReader {
+	/// Read a UTF8 string using a byte count
+	/// - Parameters:
+	///   - byteCount: The number of bytes containing the string (not including the string terminator)
+	///   - lengthIncludesTerminator: If true, assumes that the _last_ character in the string is the null terminator.
+	/// - Returns: A string
+	@inlinable func readStringUTF8(byteCount: Int, lengthIncludesTerminator: Bool = false) throws -> String {
+		try self.readStringSingleByteEncoding(.utf8, length: byteCount, lengthIncludesTerminator: lengthIncludesTerminator)
 	}
 
 	/// Read a UTF8 string up to a null terminator
+	///
+	/// Note this is greedy - reading will continue until EOF if no NULL characters appear in the stream.
+	/// This means that if the stream is gigantic without any null terminators your memory usage will skyrocket
+	///
+	/// You shouldn't really use this method if you know the length
 	@inlinable func readStringUTF8NullTerminated() throws -> String {
-		try self.readStringNullTerminated(.utf8)
+		try self.readStringSingleByteEncodingNullTerminated(.utf8)
 	}
 }
 
 // MARK: wide strings
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a wide (2-byte) string with a particular encoding
 	/// - Parameters:
 	///   - length: The number of 2-byte characters to read
@@ -112,10 +118,10 @@ public extension BytesParser {
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
-		throw ParseError.invalidStringEncoding
+		throw BytesReader.ParseError.invalidStringEncoding
 	}
 
-	/// Read a wide (2-byte) string up to the string's null terminator
+	/// Read a wide string (2-byte characters) up to the string's null terminator
 	/// - Parameters:
 	///   - encoding: The expected encoding
 	/// - Returns: A string
@@ -123,27 +129,24 @@ public extension BytesParser {
 		var rawContent = Data(capacity: 1024)
 		while self.hasMoreData {
 			let char = try self.readData(count: 2)
-			if char.map({ $0 }) == terminator16 { break }
+			if char.map({ $0 }) == BytesParser.terminator16 { break }
 			rawContent += char
 		}
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
-		throw ParseError.invalidStringEncoding
+		throw BytesReader.ParseError.invalidStringEncoding
 	}
 }
 
-public extension BytesParser {
-	/// Read a UTF16 string
+public extension BytesReader {
+	/// Read a UTF16 string (2-byte characters)
 	/// - Parameters:
 	///   - byteOrder: The expected byte ordering for the string
 	///   - length: The number of 2-byte character to read
 	/// - Returns: A string
-	@inlinable func readStringUTF16(_ byteOrder: Endianness, length: Int) throws -> String {
-		try self.readStringWide16(
-			(byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian,
-			length: length
-		)
+	@inlinable func readStringUTF16(_ byteOrder: BytesParser.Endianness, length: Int) throws -> String {
+		try self.readStringWide16((byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian, length: length)
 	}
 
 	/// Read a big-endian utf16 string
@@ -163,16 +166,14 @@ public extension BytesParser {
 	/// Read a UTF16 string up to the string's null terminator
 	///   - byteOrder: The expected byte ordering for the string
 	/// - Returns: A string
-	@inlinable func readStringUTF16NullTerminated(_ byteOrder: Endianness) throws -> String {
-		try self.readStringWide16NullTerminated(
-			encoding: (byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian
-		)
+	@inlinable func readStringUTF16NullTerminated(_ byteOrder: BytesParser.Endianness) throws -> String {
+		try self.readStringWide16NullTerminated(encoding: (byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian)
 	}
 }
 
 // MARK: UTF32 strings
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a wide (4-byte) string
 	/// - Parameters:
 	///   - length: The number of 4-byte characters
@@ -182,7 +183,7 @@ public extension BytesParser {
 		guard length > 0 else { return "" }
 		let rawContent = try self.readData(count: length * 4)
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw ParseError.invalidStringEncoding
+			throw BytesReader.ParseError.invalidStringEncoding
 		}
 		return str
 	}
@@ -208,25 +209,25 @@ public extension BytesParser {
 		var rawContent = Data(capacity: 1024)
 		while self.hasMoreData {
 			let char = try self.readData(count: 4)
-			if char.map({ $0 }) == terminator32 { break }
+			if char.map({ $0 }) == BytesParser.terminator32 { break }
 			rawContent += char
 		}
 
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw ParseError.invalidStringEncoding
+			throw BytesReader.ParseError.invalidStringEncoding
 		}
 
 		return str
 	}
 }
 
-public extension BytesParser {
+public extension BytesReader {
 	/// Read a UTF32 string
 	/// - Parameters:
 	///   - byteOrder: The expected byte ordering for the string (expects a 2 byte string encoding)
 	///   - length: The number of 4-byte character to read
 	/// - Returns: A string
-	@inlinable func readStringUTF32(_ byteOrder: Endianness, length: Int) throws -> String {
+	@inlinable func readStringUTF32(_ byteOrder: BytesParser.Endianness, length: Int) throws -> String {
 		try self.readStringWide32(
 			(byteOrder == .big) ? .utf32BigEndian : .utf32LittleEndian,
 			length: length
@@ -236,7 +237,7 @@ public extension BytesParser {
 	/// Read a UTF32 string up to the string's null terminator
 	///   - byteOrder: The expected byte ordering for the string
 	/// - Returns: A string
-	@inlinable func readStringUTF32NullTerminated(_ byteOrder: Endianness) throws -> String {
+	@inlinable func readStringUTF32NullTerminated(_ byteOrder: BytesParser.Endianness) throws -> String {
 		try self.readStringWide32NullTerminated((byteOrder == .big) ? .utf32BigEndian : .utf32LittleEndian)
 	}
 }

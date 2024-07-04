@@ -26,28 +26,31 @@ public extension BytesWriter {
 	/// - Parameters:
 	///   - string: The string to write
 	///   - encoding: The encoding to use
-	func writeByteString(_ string: String, encoding: String.Encoding) throws {
+	func writeStringByte(_ string: String, encoding: String.Encoding, includeNullTerminator: Bool = false) throws {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
 		try self.writeData(data)
+		if includeNullTerminator {
+			try self.writeByte(BytesParser.terminator8)
+		}
 	}
 
-	/// Write a null-terminated string with encoding
+	/// Write a UTF8 String with an optional null character
 	/// - Parameters:
 	///   - string: The string to write
-	///   - encoding: The encoding to use
-	func writeByteStringNullTerminated(_ string: String, encoding: String.Encoding) throws {
-		try self.writeByteString(string, encoding: encoding)
-		try self.writeByte(0x00)
+	///   - includeNullTerminator: If true, includes a string termination character (00 00)
+	@inlinable func writeStringUTF8(_ string: String, includeNullTerminator: Bool = false) throws {
+		try self.writeStringByte(string, encoding: .utf8, includeNullTerminator: includeNullTerminator)
 	}
 }
 
 public extension BytesWriter {
-	/// Write a wide (2-byte) string without a terminator
+	/// Write a wide (2-byte) string
 	/// - Parameters:
 	///   - string: The string to write
 	///   - encoding: The encoding to use
+	///   - includeNullTerminator: If true, includes a string termination character (00 00)
 	///
 	/// Example usage :-
 	///
@@ -56,35 +59,39 @@ public extension BytesWriter {
 	///    try writer.writeWide16String(message, encoding: .utf16LittleEndian)
 	/// }
 	/// ```
-	func writeWide16String(_ string: String, encoding: String.Encoding) throws {
+	func writeStringWide16(_ string: String, encoding: String.Encoding, includeNullTerminator: Bool = false) throws {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
 		try self.writeData(data)
+		if includeNullTerminator {
+			try self.writeBytes(BytesParser.terminator16)
+		}
 	}
 
-	/// Write a wide (2-byte) string with a null terminator (0x00 0x00)
+	/// Write a UTF16 big endian string with an optional null character
 	/// - Parameters:
 	///   - string: The string to write
-	///   - encoding: The encoding to use
-	///
-	/// Example usage :-
-	///
-	/// ```swift
-	/// let data = try BytesWriter.assemble { writer in
-	///    try writer.writeWide16StringNullTerminated(message, encoding: .utf16LittleEndian)
-	/// }
-	func writeWide16StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
-		try self.writeWide16String(string, encoding: encoding)
-		try self.writeBytes(terminator16)
+	///   - includeNullTerminator: If true, includes a string termination character (00 00)
+	@inlinable func writeStringUTF16BE(_ string: String, includeNullTerminator: Bool = false) throws {
+		try self.writeStringWide16(string, encoding: .utf16BigEndian, includeNullTerminator: includeNullTerminator)
+	}
+
+	/// Write a UTF16 little endian string with an optional null character
+	/// - Parameters:
+	///   - string: The string to write
+	///   - includeNullTerminator: If true, includes a string termination character (00 00)
+	@inlinable func writeStringUTF16LE(_ string: String, includeNullTerminator: Bool = false) throws {
+		try self.writeStringWide16(string, encoding: .utf16LittleEndian, includeNullTerminator: includeNullTerminator)
 	}
 }
 
 public extension BytesWriter {
-	/// Write a UTF32 (4-byte) string without a terminator
+	/// Write a wide (4-byte) string without a terminator
 	/// - Parameters:
 	///   - string: The string to write
 	///   - encoding: The encoding to use
+	///   - includeNullTerminator: If true, adds a string termination character (00 00 00 00)
 	///
 	/// Example usage :-
 	///
@@ -92,26 +99,29 @@ public extension BytesWriter {
 	/// let data = try BytesWriter.assemble { writer in
 	///    try writer.writeWide32String(message, encoding: .utf32LittleEndian)
 	/// }
-	func writeWide32String(_ string: String, encoding: String.Encoding) throws {
+	func writeStringWide32(_ string: String, encoding: String.Encoding, includeNullTerminator: Bool = false) throws {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
 		try self.writeData(data)
+		if includeNullTerminator {
+			try self.writeBytes(BytesParser.terminator32)
+		}
 	}
 
-	/// Write a UTF32 (4-byte) string with a terminator
+	/// Write a UTF32 big endian string (no terminator)
 	/// - Parameters:
 	///   - string: The string to write
-	///   - encoding: The encoding to use
-	///
-	/// Example usage :-
-	///
-	/// ```swift
-	/// let data = try BytesWriter.assemble { writer in
-	///    try writer.writeWide32StringNullTerminated(message, encoding: .utf32LittleEndian)
-	/// }
-	func writeWide32StringNullTerminated(_ string: String, encoding: String.Encoding) throws {
-		try self.writeWide32String(string, encoding: encoding)
-		try self.writeBytes(terminator32)
+	///   - includeNullTerminator: If true, adds a string termination character (00 00 00 00)
+	@inlinable func writeStringUTF32BE(_ string: String, includeNullTerminator: Bool = false) throws {
+		try self.writeStringWide32(string, encoding: .utf32BigEndian, includeNullTerminator: includeNullTerminator)
+	}
+
+	/// Write a UTF32 little endian string (no terminator)
+	/// - Parameters:
+	///   - string: The string to write
+	///   - includeNullTerminator: If true, adds a string termination character (00 00 00 00)
+	@inlinable func writeStringUTF32LE(_ string: String, includeNullTerminator: Bool = false) throws {
+		try self.writeStringWide32(string, encoding: .utf32LittleEndian, includeNullTerminator: includeNullTerminator)
 	}
 }
