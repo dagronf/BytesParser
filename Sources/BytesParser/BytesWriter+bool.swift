@@ -23,7 +23,10 @@ import Foundation
 
 public extension BytesWriter {
 	/// Write a bool value byte (0x00 == false, 0x01 == true)
-	func writeBool(_ value: Bool) throws {
+	/// - Parameter value: The bool value to write
+	/// - Returns: The number of bytes written
+	@discardableResult
+	@inlinable func writeBool(_ value: Bool) throws -> Int {
 		return try self.writeByte(value ? 0x01 : 0x00)
 	}
 }

@@ -23,7 +23,7 @@ final class ByteIterableTests: XCTestCase {
 	func testAsciiReadInclTerminator() throws {
 		let d: [UInt8] = [0x66,0x69,0x73,0x68,0x00,0x61,0x6E,0x64,0x00]
 
-		try BytesReader.parse(bytes: d) { parser in
+		try BytesReader.read(bytes: d) { parser in
 			let str1 = try parser.readStringASCII(length: 5, lengthIncludesTerminator: true)
 			XCTAssertEqual(str1, "fish")
 			let str2 = try parser.readStringASCII(length: 4, lengthIncludesTerminator: true)
@@ -55,7 +55,7 @@ final class ByteIterableTests: XCTestCase {
 	func testWindowsWideStringRead() throws {
 		// https://onlineutf8tools.com/convert-utf8-to-utf16
 		let rawData: [UInt8] = [0x1f,0x04, 0x40,0x04, 0x38,0x04, 0x32,0x04, 0x35,0x04, 0x42,0x04, 0x00,0x00, 0x80, 0x99]
-		try BytesReader.parse(bytes: rawData) { parser in
+		try BytesReader.read(bytes: rawData) { parser in
 			let msg = try parser.readStringWide16NullTerminated(encoding: .utf16LittleEndian)
 			XCTAssertEqual(msg, "Привет")
 			XCTAssertEqual(0x80, try parser.readByte())
@@ -65,7 +65,7 @@ final class ByteIterableTests: XCTestCase {
 
 		// Whitespace at the end
 		let rawData2: [UInt8] = [0x1f,0x04, 0x40,0x04, 0x38,0x04, 0x32,0x04, 0x35,0x04, 0x42,0x04, 0x00, 0x00]
-		try BytesReader.parse(bytes: rawData2) { parser in
+		try BytesReader.read(bytes: rawData2) { parser in
 			let msg = try parser.readStringWide16NullTerminated(encoding: .utf16LittleEndian)
 			XCTAssertEqual(msg, "Привет")
 			XCTAssertThrowsError(try parser.readByte())
@@ -89,7 +89,7 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertFalse(data.hasMoreData)
 
 		try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
-			try BytesReader.parse(inputStream: inputStream) { parser in
+			try BytesReader.read(inputStream: inputStream) { parser in
 				let str1 = try parser.readStringASCIINullTerminated()
 				XCTAssertEqual("fish and", str1)
 
@@ -194,7 +194,7 @@ final class ByteIterableTests: XCTestCase {
 	}
 
 	func testReadIntegersAndStuff() throws {
-		let data = try BytesWriter.assemble { writer in
+		let data = try BytesWriter.build { writer in
 			try writer.writeInt16(10101, .big)
 			try writer.writeUInt16(40000, .big)
 			try writer.writeInt16(-10101, .little)
@@ -207,7 +207,7 @@ final class ByteIterableTests: XCTestCase {
 
 		XCTAssertEqual(18, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(10101, try parser.readInt16(.big))
 			XCTAssertEqual(40000, try parser.readUInt16(.big))
 			XCTAssertEqual(-10101, try parser.readInt16(.little))
@@ -221,14 +221,14 @@ final class ByteIterableTests: XCTestCase {
 	func test32BitString() throws {
 		let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
 		let msgcount = message.count
-		let data = try BytesWriter.assemble { writer in
+		let data = try BytesWriter.build { writer in
 			try writer.writeStringWide32(message, encoding: .utf32BigEndian)
 			try writer.writeByte(0x78)
 			try writer.writeStringWide32(message, encoding: .utf32LittleEndian)
 		}
 		XCTAssertEqual((msgcount*4)*2 + 1, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			let str1 = try parser.readStringWide32(.utf32BigEndian, length: message.count)
 			XCTAssertEqual(message, str1)
 			XCTAssertEqual(0x78, try parser.readByte())
@@ -243,7 +243,7 @@ final class ByteIterableTests: XCTestCase {
 
 		let url = try resourceURL(forResource: "May0612", withExtension: "puz")
 
-		try BytesReader.parse(fileURL: url) { parser in
+		try BytesReader.read(fileURL: url) { parser in
 			let /*checksum*/ _: UInt16 = try parser.readInteger(.little)
 			let magic = try parser.readStringASCII(length: 12, lengthIncludesTerminator: true)
 			XCTAssertEqual(magic, "ACROSS&DOWN")
@@ -312,7 +312,7 @@ final class ByteIterableTests: XCTestCase {
 			return try parser.readStringUTF16(.big, length: Int(titleLength))
 		}
 
-		try BytesReader.parse(fileURL: url) { parser in
+		try BytesReader.read(fileURL: url) { parser in
 			let magic = try parser.readStringASCII(length: 4)
 			XCTAssertEqual("8BCB", magic)
 
@@ -373,7 +373,7 @@ final class ByteIterableTests: XCTestCase {
 		// https://en.wikibooks.org/wiki/User:Bdinfo/mpls
 		let url = try resourceURL(forResource: "00000", withExtension: "mpls")
 
-		try BytesReader.parse(fileURL: url) { parser in
+		try BytesReader.read(fileURL: url) { parser in
 			let magic = try parser.readStringASCII(length: 4)
 			XCTAssertEqual("MPLS", magic)
 			let version = try parser.readStringASCII(length: 4)
@@ -434,7 +434,7 @@ final class ByteIterableTests: XCTestCase {
 	func testReadAll() throws {
 		let url = try resourceURL(forResource: "00000", withExtension: "mpls")
 		do {
-			try BytesReader.parse(fileURL: url) { parser in
+			try BytesReader.read(fileURL: url) { parser in
 				let data = try parser.readAllRemainingData()
 				XCTAssertEqual(358, data.count)
 				XCTAssertThrowsError(try parser.readByte())
@@ -442,7 +442,7 @@ final class ByteIterableTests: XCTestCase {
 		}
 
 		do {
-			try BytesReader.parse(fileURL: url) { parser in
+			try BytesReader.read(fileURL: url) { parser in
 				let _ = try parser.readStringASCII(length: 4)
 				let data = try parser.readAllRemainingData()
 				XCTAssertEqual(354, data.count)
@@ -452,7 +452,7 @@ final class ByteIterableTests: XCTestCase {
 
 		do {
 			let rawData: [UInt8] = [0x66,0x69,0x73,0x68,0x00,0x61,0x6E,0x64,0x00]
-			try BytesReader.parse(bytes: rawData) { parser in
+			try BytesReader.read(bytes: rawData) { parser in
 				XCTAssertEqual(0x66, try parser.readByte())
 				XCTAssertEqual(0x69, try parser.readByte())
 				XCTAssertEqual(Data([0x73,0x68,0x00,0x61,0x6E,0x64,0x00]), try parser.readAllRemainingData())
@@ -465,7 +465,7 @@ final class ByteIterableTests: XCTestCase {
 			let allData = try BytesReader.data(inputStream: inputStream)
 			XCTAssertEqual(358, allData.count)
 
-			try BytesReader.parse(data: allData) { parser in
+			try BytesReader.read(data: allData) { parser in
 				let magic = try parser.readStringASCII(length: 8)
 				XCTAssertEqual("MPLS0200", magic)
 			}
@@ -477,7 +477,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadUTF16LE() throws {
 		let inputStream = try resourceInputStream(forResource: "utf16-le", withExtension: "txt")
-		try BytesReader.parse(inputStream: inputStream) { parser in
+		try BytesReader.read(inputStream: inputStream) { parser in
 			let text = try parser.readStringUTF16LE(length: 18)
 			XCTAssertEqual("Testing UTF16 LE ツ", text)
 		}
@@ -485,7 +485,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadUTF16BE() throws {
 		let inputStream = try resourceInputStream(forResource: "utf16-be", withExtension: "txt")
-		try BytesReader.parse(inputStream: inputStream) { parser in
+		try BytesReader.read(inputStream: inputStream) { parser in
 			let text = try parser.readStringUTF16BE(length: 18)
 			XCTAssertEqual("Testing UTF16 BE ツ", text)
 		}
@@ -493,7 +493,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadUTF32LE() throws {
 		let inputStream = try resourceInputStream(forResource: "utf32-le", withExtension: "txt")
-		try BytesReader.parse(inputStream: inputStream) { parser in
+		try BytesReader.read(inputStream: inputStream) { parser in
 			let text = try parser.readStringUTF32LE(length: 18)
 			XCTAssertEqual("Testing UTF32 LE ツ", text)
 		}
@@ -501,7 +501,7 @@ final class ByteIterableTests: XCTestCase {
 
 	func testReadUTF32BE() throws {
 		let inputStream = try resourceInputStream(forResource: "utf32-be", withExtension: "txt")
-		try BytesReader.parse(inputStream: inputStream) { parser in
+		try BytesReader.read(inputStream: inputStream) { parser in
 			let text = try parser.readStringUTF32BE(length: 18)
 			XCTAssertEqual("Testing UTF32 BE ツ", text)
 		}
@@ -510,7 +510,7 @@ final class ByteIterableTests: XCTestCase {
 	func testReadWindowsBitmap() throws {
 		// https://en.wikipedia.org/wiki/BMP_file_format
 		let inputStream = try resourceInputStream(forResource: "winbitmap", withExtension: "bmp")
-		try BytesReader.parse(inputStream: inputStream) { parser in
+		try BytesReader.read(inputStream: inputStream) { parser in
 			let type = try parser.readStringASCII(length: 2)
 			XCTAssertEqual("BM", type)
 			let fileByteSize = try parser.readInt32(.little)
@@ -549,16 +549,16 @@ final class ByteIterableTests: XCTestCase {
 	func testInt8() throws {
 		let values: [Int8] = [56, -37, 127]
 
-		let d1 = try BytesWriter.assemble { writer in
+		let d1 = try BytesWriter.build { writer in
 			try writer.writeInt8(values)
 		}
 
-		try BytesReader.parse(data: d1) { reader in
+		try BytesReader.read(data: d1) { reader in
 			let r1 = try reader.readInt8(count: values.count)
 			XCTAssertEqual(values, r1)
 		}
 		
-		try BytesReader.parse(data: d1) { reader in
+		try BytesReader.read(data: d1) { reader in
 			let r1 = try reader.readInt8()
 			let r2 = try reader.readInt8()
 			let r3 = try reader.readInt8()
@@ -569,16 +569,16 @@ final class ByteIterableTests: XCTestCase {
 	func testUInt8() throws {
 		let values: [UInt8] = [0, 37, 127, 245]
 
-		let d1 = try BytesWriter.assemble { writer in
+		let d1 = try BytesWriter.build { writer in
 			try writer.writeUInt8(values)
 		}
 
-		try BytesReader.parse(data: d1) { reader in
+		try BytesReader.read(data: d1) { reader in
 			let r1 = try reader.readUInt8(count: values.count)
 			XCTAssertEqual(values, r1)
 		}
 
-		try BytesReader.parse(data: d1) { reader in
+		try BytesReader.read(data: d1) { reader in
 			let r1 = try reader.readUInt8()
 			let r2 = try reader.readUInt8()
 			let r3 = try reader.readUInt8()

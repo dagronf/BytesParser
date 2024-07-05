@@ -98,7 +98,7 @@ public extension BytesWriter {
 	///    try writer.writeUInt16(5, .bigEndian)
 	///    try writer.writeString("Hello", encoding: .ascii)
 	/// }
-	static func assemble(_ block: (BytesWriter) throws -> Void) throws -> Data {
+	static func build(_ block: (BytesWriter) throws -> Void) throws -> Data {
 		let writer = try BytesWriter()
 		do {
 			try block(writer)
@@ -120,7 +120,7 @@ public extension BytesWriter {
 	///    try writer.writeUInt16(5, .bigEndian)
 	///    try writer.writeString("Hello", encoding: .ascii)
 	/// }
-	static func assemble(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
+	static func build(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws {
 		let writer = try BytesWriter(fileURL: fileURL)
 		do {
 			try block(writer)

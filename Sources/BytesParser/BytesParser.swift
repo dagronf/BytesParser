@@ -27,8 +27,11 @@ public class BytesParser {
 	/// UTF-16 Big Endian BOM
 	public static let BOMUTF16BE: [UInt8] = [0xfe, 0xff]
 
+	/// String terminator - single byte
 	public static let terminator8: UInt8 = 0x00
+	/// String terminator - wide16
 	public static let terminator16: [UInt8] = [0x00, 0x00]
+	/// String terminator - wide32
 	public static let terminator32: [UInt8] = [0x00, 0x00, 0x00, 0x00]
 }
 

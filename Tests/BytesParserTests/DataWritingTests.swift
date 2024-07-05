@@ -13,7 +13,7 @@ final class DataWritingTests: XCTestCase {
 	}
 
 	func testBasic() throws {
-		let data = try BytesWriter.assemble { writer in
+		let data = try BytesWriter.build { writer in
 			try writer.writeByte(0x20)
 			try writer.writeByte(0x40)
 			try writer.writeByte(0x60)
@@ -36,7 +36,7 @@ final class DataWritingTests: XCTestCase {
 	}
 
 	func testInt8() throws {
-		let data = try BytesWriter.assemble { writer in
+		let data = try BytesWriter.build { writer in
 			try writer.writeInt8(-10)
 			try writer.writeInt8(10)
 			try writer.writeUInt8(234)
@@ -44,14 +44,14 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(3, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			// Map byte to a Int8
 			XCTAssertEqual(-10, try parser.readInt8())
 			XCTAssertEqual(10, try parser.readInt8())
 			XCTAssertEqual(-22, try parser.readInt8())
 		}
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(246, try parser.readUInt8())
 			XCTAssertEqual(10, try parser.readUInt8())
 			XCTAssertEqual(234, try parser.readUInt8())
@@ -60,7 +60,7 @@ final class DataWritingTests: XCTestCase {
 
 	func testNumbers() throws {
 
-		let out = try BytesWriter.assemble { writer in
+		let out = try BytesWriter.build { writer in
 			try writer.writeUInt16(101, .little) // 2
 			try writer.writeUInt32(77688, .big)  // 4
 			try writer.writeUInt16(2987, .little)  // 2
@@ -97,7 +97,7 @@ final class DataWritingTests: XCTestCase {
 			let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
 
 			// Generate the file content
-			try BytesWriter.assemble(fileURL: fileURL) { writer in
+			try BytesWriter.build(fileURL: fileURL) { writer in
 				try writer.writeUInt16(101, .little)
 				try writer.writeUInt32(77688, .big)
 				try writer.writeUInt16(2987, .little)
@@ -110,7 +110,7 @@ final class DataWritingTests: XCTestCase {
 			}
 
 			// Now, try to read it back in
-			try BytesReader.parse(fileURL: fileURL) { parser in
+			try BytesReader.read(fileURL: fileURL) { parser in
 				let v1: UInt16 = try parser.readInteger(.little)
 				XCTAssertEqual(101, v1)
 				let v2: UInt32 = try parser.readInteger(.big)
@@ -135,28 +135,28 @@ final class DataWritingTests: XCTestCase {
 
 	func testPaddingAddNoPadding() throws {
 		// Shouldn't add any padding
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeUInt32(22345, .big)
 			try writer.padToFourByteBoundary()
 		}
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readUInt32(.big))
 			XCTAssertThrowsError(try parser.readByte())
 		}
 	}
 
 	func testPadding3BytesExpected() throws {
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeBool(true)
 			try writer.padToFourByteBoundary(using: 0xff)
 		}
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(true, try parser.readBool())
 			XCTAssertEqual(0xff, try parser.readByte())
 			XCTAssertEqual(0xff, try parser.readByte())
@@ -167,14 +167,14 @@ final class DataWritingTests: XCTestCase {
 
 	func testPadding2BytesExpected() throws {
 		// Generate the file content
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeUInt16(22345, .big)
 			try writer.padToFourByteBoundary()
 		}
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0x0, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -184,7 +184,7 @@ final class DataWritingTests: XCTestCase {
 
 	func testPadding1BytesExpected() throws {
 		// Generate the file content
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeUInt16(22345, .big)
 			try writer.writeByte(0xcd)
 			try writer.padToFourByteBoundary()
@@ -192,7 +192,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0xcd, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -261,12 +261,12 @@ final class DataWritingTests: XCTestCase {
 
 	func testWritingFloat32ArrayValues() throws {
 		let vals: [Float32] = [1451.2224, 1.2, 9999.9]
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeFloat32(vals, .big)
 			try writer.writeFloat32(vals, .little)
 		}
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			let v1 = try parser.readFloat32(.big, count: vals.count)
 			let v2 = try parser.readFloat32(.little, count: vals.count)
 
@@ -283,12 +283,12 @@ final class DataWritingTests: XCTestCase {
 			28.77642913403846,
 			58.21730813384373
 		]
-		let data = try BytesWriter.assemble() { writer in
+		let data = try BytesWriter.build() { writer in
 			try writer.writeFloat64(vals, .big)
 			try writer.writeFloat64(vals, .little)
 		}
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			let v1 = try parser.readFloat64(.big, count: vals.count)
 			let v2 = try parser.readFloat64(.little, count: vals.count)
 
@@ -296,7 +296,7 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertEqual(vals, v2)
 		}
 
-		try BytesReader.parse(data: data) { parser in
+		try BytesReader.read(data: data) { parser in
 			let v1 = try parser.readFloat64(.little, count: vals.count)
 			let v2 = try parser.readFloat64(.big, count: vals.count)
 
@@ -310,12 +310,12 @@ final class DataWritingTests: XCTestCase {
 			return UInt8(index % 256)
 		}
 
-		let data = try BytesWriter.assemble { w in
+		let data = try BytesWriter.build { w in
 			try w.writeBytes(raw)
 			try w.writeInt16(123, .little)
 		}
 
-		try BytesReader.parse(data: data) { r in
+		try BytesReader.read(data: data) { r in
 			let rw = try r.readBytes(count: raw.count)
 			XCTAssertEqual(raw, rw)
 
@@ -323,6 +323,41 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertEqual(123, i)
 
 			// Should not have any more data
+			XCTAssertThrowsError(try r.readByte())
+		}
+	}
+
+	func testWriteLengths() throws {
+		let ui1: [UInt8] = [25, 101, 4]
+		let ii1: [Int8] = [25, 101, -126, 127]
+		let si1 = "hello"
+
+		let data = try BytesWriter.build { w in
+			XCTAssertEqual(1, try w.writeUInt8(25))
+			XCTAssertEqual(3, try w.writeUInt8(ui1))
+			XCTAssertEqual(1, try w.writeInt8(-25))
+			XCTAssertEqual(4, try w.writeInt8([25, 101, -126, 127]))
+
+			XCTAssertEqual(5, try w.writeStringASCII(si1))
+			XCTAssertEqual(6, try w.writeStringASCII(si1, includeNullTerminator: true))
+
+			XCTAssertEqual(20, try w.writeStringUTF32BE(si1))
+			XCTAssertEqual(10, try w.writeStringUTF16LE(si1))
+		}
+
+		try BytesReader.read(data:data) { r in
+			XCTAssertEqual(25, try r.readUInt8())
+			XCTAssertEqual(ui1, try r.readUInt8(count: 3))
+			XCTAssertEqual(-25, try r.readInt8())
+			XCTAssertEqual(ii1, try r.readInt8(count: 4))
+
+			XCTAssertEqual(si1, try r.readStringASCII(length: 5))
+			XCTAssertEqual(si1, try r.readStringASCII(length: 6, lengthIncludesTerminator: true))
+
+			XCTAssertEqual(si1, try r.readStringUTF32BE(length: 5))
+			XCTAssertEqual(si1, try r.readStringUTF16LE(length: 5))
+
+			// Should fail
 			XCTAssertThrowsError(try r.readByte())
 		}
 	}

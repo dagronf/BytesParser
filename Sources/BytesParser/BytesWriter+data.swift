@@ -24,30 +24,38 @@ import Foundation
 public extension BytesWriter {
 	/// Write the contents of a Data object to the destination
 	/// - Parameter data: The data to write
-	func writeData(_ data: Data) throws {
+	/// - Returns: The number of bytes written
+	@discardableResult
+	func writeData(_ data: Data) throws -> Int {
 		try data.withUnsafeBytes { try self.writeBuffer($0, byteCount: data.count) }
 	}
 
 	/// Write an array of bytes to the destination
 	/// - Parameter bytes: An array of bytes to write
-	func writeBytes(_ bytes: [UInt8]) throws {
+	/// - Returns: The number of bytes written
+	@discardableResult
+	func writeBytes(_ bytes: [UInt8]) throws -> Int {
 		let writtenCount = self.outputStream.write(bytes, maxLength: bytes.count)
 		guard writtenCount == bytes.count else {
 			throw BytesWriter.WriterError.unableToWriteBytes
 		}
 		self.count += bytes.count
+		return bytes.count
 	}
 
 	/// Write a single byte to the destination
-	@inlinable func writeByte(_ byte: UInt8) throws {
+	/// - Parameter byte: The byte to write
+	/// - Returns: The number of bytes written
+	@discardableResult
+	@inlinable func writeByte(_ byte: UInt8) throws -> Int {
 		try self.writeBytes([byte])
 	}
 }
 
 internal extension BytesWriter {
 	/// Write the contents of a raw buffer pointer to the destination
-	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws {
-		guard byteCount > 0 else { return }
+	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws -> Int {
+		assert(byteCount > 0)
 		guard let buffer = buffer.baseAddress else {
 			throw BytesWriter.WriterError.emptyBuffer
 		}
@@ -56,5 +64,7 @@ internal extension BytesWriter {
 		let written = self.outputStream.write(ptr, maxLength: byteCount)
 		guard written == byteCount else { throw BytesWriter.WriterError.unableToWriteBytes }
 		self.count += byteCount
+
+		return byteCount
 	}
 }

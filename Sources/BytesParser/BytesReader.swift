@@ -43,6 +43,7 @@ public class BytesReader {
 	}
 
 	/// Create a byte parser from the contents of a local file
+	/// - Parameter fileURL: The file URL to read
 	public init(fileURL: URL) throws {
 		guard
 			fileURL.isFileURL,
@@ -75,7 +76,7 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - data: The data object to parse
 	///   - block: The block containing the parsing calls
-	@inlinable static func parse(data: Data, _ block: (BytesReader) throws -> Void) throws {
+	@inlinable static func read(data: Data, _ block: (BytesReader) throws -> Void) throws {
 		let parser = BytesReader(data: data)
 		try block(parser)
 	}
@@ -84,7 +85,7 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - bytes: An array of bytes to parse
 	///   - block: The block containing the parsing calls
-	@inlinable static func parse(bytes: [UInt8], _ block: (BytesReader) throws -> Void) throws {
+	@inlinable static func read(bytes: [UInt8], _ block: (BytesReader) throws -> Void) throws {
 		let parser = BytesReader(content: bytes)
 		try block(parser)
 	}
@@ -93,7 +94,7 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - fileURL: The local file URL to read from
 	///   - block: The block containing the parsing calls
-	@inlinable static func parse<ResultType>(fileURL: URL, _ block: (BytesReader) throws -> ResultType) throws -> ResultType {
+	@inlinable static func read<ResultType>(fileURL: URL, _ block: (BytesReader) throws -> ResultType) throws -> ResultType {
 		let parser = try BytesReader(fileURL: fileURL)
 		return try block(parser)
 	}
@@ -102,7 +103,7 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - inputStream: The stream to read from
 	///   - block: The block containing the parsing calls
-	@inlinable static func parse(inputStream: InputStream, _ block: (BytesReader) throws -> Void) throws {
+	@inlinable static func read(inputStream: InputStream, _ block: (BytesReader) throws -> Void) throws {
 		let parser = BytesReader(inputStream: inputStream)
 		try block(parser)
 	}

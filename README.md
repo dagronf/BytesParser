@@ -12,7 +12,7 @@ Supports :-
 * different endianness, even within the same file
 * different string encodings, including multi-byte encodings like UInt32
 * explicit string null-termination handling
-* explicit endian handling for appropriate types (eg. `Int32`) so no unintential byte swaps.
+* explicit endian handling for appropriate types (eg. `Int32`) so no unintentional byte swaps.
 * padding to byte boundaries
 
 [Online Documentation](https://swiftpackageindex.com/dagronf/BytesParser/main/documentation/bytesparser)
@@ -45,15 +45,15 @@ The closure based API hides some of the complexity of opening/closing a bytes fi
 
 ```swift
 // Parsing a (local) crossword file
-try BytesReader.parse(fileURL: url) { parser in
-   let checksum = try parser.readUInt16(.little)
-   let magic = try parser.readStringASCII(length: 12, lengthIncludesTerminator: true)
+try BytesReader.read(fileURL: url) { reader in
+   let checksum = try reader.readUInt16(.little)
+   let magic = try reader.readStringASCII(length: 12, lengthIncludesTerminator: true)
    assert(magic, "ACROSS&DOWN")
 
-   let width = try parser.readInt8()
-   let height = try parser.readInt8()
+   let width = try reader.readInt8()
+   let height = try reader.readInt8()
 
-   let clueCount = try parser.readUInt16(.little)
+   let clueCount = try reader.readUInt16(.little)
    ...
    let title = try parser.readStringNullTerminated(encoding: .ascii)
 }
@@ -78,6 +78,8 @@ let data: [UInt8] = [0x20, 0x40, 0x60, 0x80]
 
 let writer = try BytesWriter()
 try writer.writeBytes(data)
+
+// Mark the content as complete
 writer.complete()
 
 let myData = writer.data()
@@ -86,23 +88,23 @@ let myData = writer.data()
 ### Closure based
 
 The closure based API hides some of the complexity of opening/closing a writing destination.
-You won't need to call `complete()` at the end of an assemble block.
+You won't need to call `complete()` at the end of an build block.
 
 ```swift
 // Write to a Data object 
-static func assemble(_ block: (BytesWriter) throws -> Void) throws -> Data
+static func build(_ block: (BytesWriter) throws -> Void) throws -> Data
 ```
 
 ```swift
 // Write to a file
-static func assemble(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws
+static func build(fileURL: URL, _ block: (BytesWriter) throws -> Void) throws
 ```
 
 #### Example
 
 ```swift
 let message = "10. 好き 【す・き】 (na-adj) – likable; desirable"
-try BytesWriter.assemble(fileURL: fileURL) { writer in
+try BytesWriter.build(fileURL: fileURL) { writer in
    // Write out a 'message' block
    // > Write out the block type identifier
    try writer.writeByte(0x78)
