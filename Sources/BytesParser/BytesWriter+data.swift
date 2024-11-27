@@ -55,7 +55,7 @@ public extension BytesWriter {
 internal extension BytesWriter {
 	/// Write the contents of a raw buffer pointer to the destination
 	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws -> Int {
-		assert(byteCount > 0)
+		if byteCount == 0 { return 0 }
 		guard let buffer = buffer.baseAddress else {
 			throw BytesWriter.WriterError.emptyBuffer
 		}
