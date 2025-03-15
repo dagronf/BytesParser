@@ -63,7 +63,7 @@ public extension BytesReader {
 	/// - Parameter byteOrder: The expected endianness for the integer
 	/// - Returns: An integer
 	@inlinable func readInt16(_ byteOrder: BytesParser.Endianness) throws -> Int16 {
-		return try self.readInteger(byteOrder)
+		try self.readInteger(byteOrder)
 	}
 
 	/// Read an array of Int16 values
@@ -79,7 +79,7 @@ public extension BytesReader {
 	/// - Parameter byteOrder: The expected endianness for the integer
 	/// - Returns: An integer
 	@inlinable func readInt32(_ byteOrder: BytesParser.Endianness) throws -> Int32 {
-		return try self.readInteger(byteOrder)
+		try self.readInteger(byteOrder)
 	}
 
 	/// Read an array of Int32 values

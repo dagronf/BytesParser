@@ -19,12 +19,13 @@
 
 import Foundation
 
-public class DataParser {
+/// A Data Reader that supports moving the read pointer within the data while reading
+public class RandomAccessDataReader {
 	/// The data
 	let storage: Data
 
 	/// The current read position in the data
-	private(set) var readPosition: Int = 0
+	public private(set) var readPosition: Int = 0
 
 	/// Data parser errors
 	public enum DataParserError: Error {
@@ -58,7 +59,7 @@ public class DataParser {
 	public var bytesAvailable: Int { self.storage.count - self.readPosition }
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Rewind the read position back to the start of the data
 	func rewind() {
 		self.readPosition = 0
@@ -102,10 +103,11 @@ public extension DataParser {
 		}
 	}
 
+	/// Is there more data to read?
 	func hasMoreData() -> Bool { self.readPosition < self.count }
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read a byte
 	func readByte() throws -> UInt8 {
 		guard self.readPosition < self.count else {
@@ -114,9 +116,17 @@ public extension DataParser {
 		defer { self.readPosition += 1 }
 		return self.storage[self.readPosition]
 	}
+
+	/// Read an array of bytes from the data
+	/// - Parameter count: The number of bytes to read
+	/// - Returns: An array of bytes
+	@inlinable
+	func readBytes(count: Int) throws -> Array<UInt8> {
+		try Array(self.readData(count: count))
+	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read a UInt8 value
 	@inlinable func readUInt8() throws -> UInt8 {
 		try self.readByte()
@@ -136,7 +146,7 @@ public extension DataParser {
 	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read data
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: Data
@@ -146,14 +156,6 @@ public extension DataParser {
 		}
 		defer { self.readPosition += count }
 		return self.storage[self.readPosition ..< self.readPosition + count]
-	}
-
-	/// Read the remaining data
-	/// - Returns: Data
-	func readToEndOfData() throws -> Data {
-		let count = self.count - self.readPosition - 1
-		defer { self.readPosition = self.count }
-		return self.storage[self.readPosition ... self.readPosition + count]
 	}
 
 	/// Read up to (not including) the next instance of a byte value
@@ -171,16 +173,18 @@ public extension DataParser {
 		return data
 	}
 
-	/// Read an array of bytes from the data
-	/// - Parameter count: The number of bytes to read
-	/// - Returns: An array of bytes
-	@inlinable
-	func readBytes(count: Int) throws -> Array<UInt8> {
-		try Array(self.readData(count: count))
+	/// Read the remaining data
+	/// - Returns: Data
+	///
+	/// Any subsequent reads will fail
+	func readAllRemainingData() throws -> Data {
+		let count = self.count - self.readPosition - 1
+		defer { self.readPosition = self.count }
+		return self.storage[self.readPosition ... self.readPosition + count]
 	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read an integer value from the storage
 	/// - Parameter byteOrder: The expected byte order for the integer
 	/// - Returns: The integer value
@@ -202,7 +206,7 @@ public extension DataParser {
 	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read an Int16 value from the storage
 	/// - Parameter byteOrder: The expected byte order for the integer
 	/// - Returns: The integer value
@@ -223,7 +227,7 @@ public extension DataParser {
 	}
 }
 
-extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read a UInt16 value from the storage
 	/// - Parameter byteOrder: The expected byte order for the integer
 	/// - Returns: The integer value
@@ -244,7 +248,7 @@ extension DataParser {
 	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read a single byte (ascii) string
 	/// - Parameter count: The number of characters to read
 	/// - Returns: String
@@ -252,6 +256,27 @@ public extension DataParser {
 		let data = try self.readData(count: count)
 		if let str = String(data: data, encoding: .ascii) {
 			return str
+		}
+		throw DataParserError.unableToDecodeString
+	}
+
+	/// Read a null-terminated ascii string
+	/// - Parameter maxCharacters: The maximum number of bytes to parse
+	/// - Returns: ascii string
+	func readAsciiStringNullTerminated(maxCharacters: Int = 1024) throws -> String {
+		var data = Data(capacity: 1024)
+		do {
+			let byte = try self.readByte()
+			data.append(byte)
+			if byte == 0x00 {
+				guard let str = String(data: data, encoding: .nonLossyASCII) else {
+					throw DataParserError.unableToDecodeString
+				}
+				return str
+			}
+			if data.count >= maxCharacters {
+				throw DataParserError.unableToDecodeString
+			}
 		}
 		throw DataParserError.unableToDecodeString
 	}
@@ -291,9 +316,25 @@ public extension DataParser {
 		}
 		throw DataParserError.unableToDecodeString
 	}
+
+	/// Read a utf16-style pascal string (utf16 length + utf16 string)
+	///   - byteOrder: The endianness
+	/// - Returns: String
+	func readPascalStringUTF16(_ byteOrder: BytesParser.Endianness) throws -> String {
+		// First two bytes should be a utf16 character count
+		let length = try self.readUInt16(byteOrder)
+		// Then the raw string bytes
+		let stringData = try self.readData(count: Int(length * 2))
+
+		let stringEncoding: String.Encoding = (byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian
+		if let str = String(data: stringData, encoding: stringEncoding) {
+			return str
+		}
+		throw DataParserError.unableToDecodeString
+	}
 }
 
-public extension DataParser {
+public extension RandomAccessDataReader {
 	/// Read in an IEEE 754 float32 value
 	/// - Parameter byteOrder: The endianness of the input value
 	/// - Returns: A Float32 value

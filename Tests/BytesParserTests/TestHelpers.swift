@@ -97,3 +97,10 @@ extension Data {
 		return self.map { String(format: format, $0) }.joined()
 	}
 }
+
+extension Data {
+	/// Super-simple hex string for this data
+	var hexDescription: String {
+		return reduce("") { $0 + String(format: "%02x ", $1) }
+	}
+}

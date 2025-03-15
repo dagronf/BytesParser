@@ -36,8 +36,11 @@ public extension BytesReader {
 	/// Read the next `count` bytes into a byte array
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: An array of bytes
-	@inlinable func readBytes(count: Int) throws -> [UInt8] {
-		try Array(self.readData(count: count))
+	func readBytes(count: Int) throws -> [UInt8] {
+		// If no data then don't read
+		if count == 0 { return [] }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
+		return Array(try self.readData(count: count))
 	}
 
 	/// Read the next `count` bytes into a Data object

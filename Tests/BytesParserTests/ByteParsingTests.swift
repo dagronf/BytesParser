@@ -587,4 +587,27 @@ final class ByteIterableTests: XCTestCase {
 			XCTAssertEqual(values, [r1, r2, r3, r4])
 		}
 	}
+
+	func testIntRelated() throws {
+		// https://www.scadacore.com/tools/programming-calculators/online-hex-converter/
+
+		let int16a: Int16 = -32000
+		let int16b: Int16 = 32000
+
+		let d1 = try BytesWriter.build { w in
+			try w.writeInt16(int16a, .big)
+			try w.writeInt16(int16a, .little)
+			try w.writeInt16(int16b, .big)
+			try w.writeInt16(int16b, .little)
+		}
+
+		Swift.print(d1.hexDescription)
+		XCTAssertEqual(Array(d1), [0x83, 0x00, 0x00, 0x83, 0x7d, 0x00, 0x00, 0x7d])
+
+		let r1 = BytesReader(data: d1)
+		XCTAssertEqual(-32000, try r1.readInt16(.big))
+		XCTAssertEqual(-32000, try r1.readInt16(.little))
+		XCTAssertEqual(32000, try r1.readInt16(.big))
+		XCTAssertEqual(32000, try r1.readInt16(.little))
+	}
 }

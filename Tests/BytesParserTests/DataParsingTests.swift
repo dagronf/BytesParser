@@ -15,7 +15,7 @@ final class DataParsingTests: XCTestCase {
 
 	func testDataParsingInteger8() throws {
 		do {
-			let parser = DataParser(bytes: [0x11])
+			let parser = RandomAccessDataReader(bytes: [0x11])
 			let u = try parser.readUInt8()
 			XCTAssertEqual(0x11, u)
 			parser.rewind()
@@ -24,7 +24,7 @@ final class DataParsingTests: XCTestCase {
 		}
 
 		do {
-			let parser = DataParser(bytes: [0xAA])
+			let parser = RandomAccessDataReader(bytes: [0xAA])
 			let u = try parser.readUInt8()
 			XCTAssertEqual(0xAA, u)
 			parser.rewind()
@@ -36,7 +36,7 @@ final class DataParsingTests: XCTestCase {
 	func testDataParsingInteger16BE() throws {
 		// 2-byte integers, big endian
 		do {
-			let parser = DataParser(bytes: [0x11, 0x22])    // 0x1122 -> u:4386 i:4386
+			let parser = RandomAccessDataReader(bytes: [0x11, 0x22])    // 0x1122 -> u:4386 i:4386
 			let u = try parser.readUInt16(.big)
 			XCTAssertEqual(4386, u)
 			XCTAssertFalse(parser.hasMoreData())
@@ -49,7 +49,7 @@ final class DataParsingTests: XCTestCase {
 		}
 
 		do {
-			let parser = DataParser(bytes: [0xAA, 0xBB])    // 0xAABB -> u:43707 i:-21829
+			let parser = RandomAccessDataReader(bytes: [0xAA, 0xBB])    // 0xAABB -> u:43707 i:-21829
 
 			let u = try parser.readUInt16(.big)
 			XCTAssertEqual(43707, u)
@@ -66,7 +66,7 @@ final class DataParsingTests: XCTestCase {
 	func testDataParsingInteger16LE() throws {
 		// 2-byte integers, little endian
 		do {
-			let parser = DataParser(bytes: [0x11, 0x22])    // 0x2211 -> u:8721 i:8721
+			let parser = RandomAccessDataReader(bytes: [0x11, 0x22])    // 0x2211 -> u:8721 i:8721
 			let u = try parser.readUInt16(.little)
 			XCTAssertEqual(8721, u)
 			XCTAssertFalse(parser.hasMoreData())
@@ -79,7 +79,7 @@ final class DataParsingTests: XCTestCase {
 		}
 
 		do {
-			let parser = DataParser(bytes: [0xAA, 0xBB])   	 // 0xBBAA -> u:48042 i:-17494
+			let parser = RandomAccessDataReader(bytes: [0xAA, 0xBB])   	 // 0xBBAA -> u:48042 i:-17494
 
 			let u = try parser.readUInt16(.little)
 			XCTAssertEqual(48042, u)
@@ -97,7 +97,7 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data = Data([0xAE])
-			let parser = DataParser(data: data)
+			let parser = RandomAccessDataReader(data: data)
 
 			// Should not be able to seek beyond the end of the data
 			XCTAssertThrowsError(try parser.seek(1, .current))
@@ -119,7 +119,7 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data = Data([0x11, 0x22, 0x33, 0x44])
-			let parser = DataParser(data: data)
+			let parser = RandomAccessDataReader(data: data)
 			let value: UInt32 = try parser.readInteger(.big)
 			XCTAssertEqual(0x11223344, value)
 			XCTAssertFalse(parser.hasMoreData())
@@ -137,7 +137,7 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data2 = Data([0x11, 0x22, 0x33, 0x44])
-			let parser2 = DataParser(data: data2)
+			let parser2 = RandomAccessDataReader(data: data2)
 			XCTAssertEqual(0x11, try parser2.readByte())
 			XCTAssertEqual(0x22, try parser2.readByte())
 			XCTAssertEqual(0x33, try parser2.readByte())
@@ -147,7 +147,7 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data3 = Data([0x11, 0x22, 0x33, 0x44])
-			let parser3 = DataParser(data: data3)
+			let parser3 = RandomAccessDataReader(data: data3)
 			let datar = try parser3.readData(count: 4)
 			XCTAssertEqual([0x11, 0x22, 0x33, 0x44], Array(datar))
 			XCTAssertFalse(parser3.hasMoreData())
@@ -156,7 +156,7 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data3 = Data([0x11, 0x22, 0x33, 0x44])
-			let parser3 = DataParser(data: data3)
+			let parser3 = RandomAccessDataReader(data: data3)
 			let data1 = try parser3.readData(count: 2)
 			let data2 = try parser3.readData(count: 2)
 			XCTAssertFalse(parser3.hasMoreData())
@@ -168,9 +168,9 @@ final class DataParsingTests: XCTestCase {
 
 		do {
 			let data3 = Data([0x11, 0x22, 0x33, 0x44])
-			let parser3 = DataParser(data: data3)
+			let parser3 = RandomAccessDataReader(data: data3)
 			let data1 = try parser3.readData(count: 1)
-			let data2 = try parser3.readToEndOfData()
+			let data2 = try parser3.readAllRemainingData()
 			XCTAssertFalse(parser3.hasMoreData())
 			XCTAssertThrowsError(try parser3.readByte())
 
@@ -180,9 +180,9 @@ final class DataParsingTests: XCTestCase {
 	}
 
 	func testReadToEndOfData() throws {
-		let data = DataParser(bytes: [0x11, 0x22, 0x33, 0x44])
+		let data = RandomAccessDataReader(bytes: [0x11, 0x22, 0x33, 0x44])
 		XCTAssertEqual(0x11, try data.readByte())
-		XCTAssertEqual(Data([0x22, 0x33, 0x44]), try data.readToEndOfData())
+		XCTAssertEqual(Data([0x22, 0x33, 0x44]), try data.readAllRemainingData())
 		XCTAssertFalse(data.hasMoreData())
 	}
 
@@ -195,7 +195,7 @@ final class DataParsingTests: XCTestCase {
 			try d.writeIntegers(values, .big)
 			XCTAssertEqual(d.storage.count, values.count * 2)
 
-			let p = DataParser(data: d.storage)
+			let p = RandomAccessDataReader(data: d.storage)
 			let ints: [UInt16] = try p.readIntegers(.big, count: 3)
 			XCTAssertEqual(ints, values)
 		}
@@ -205,7 +205,7 @@ final class DataParsingTests: XCTestCase {
 			try d.writeIntegers(values, .little)
 			XCTAssertEqual(d.storage.count, values.count * 2)
 
-			let p = DataParser(data: d.storage)
+			let p = RandomAccessDataReader(data: d.storage)
 			let ints: [UInt16] = try p.readIntegers(.little, count: 3)
 			XCTAssertEqual(ints, values)
 		}
@@ -220,7 +220,7 @@ final class DataParsingTests: XCTestCase {
 			try d.writeIntegers(values, .big)
 			XCTAssertEqual(d.storage.count, values.count * 2)
 
-			let p = DataParser(data: d.storage)
+			let p = RandomAccessDataReader(data: d.storage)
 			let ints: [Int16] = try p.readIntegers(.big, count: 3)
 			XCTAssertEqual(ints, values)
 		}
@@ -230,7 +230,7 @@ final class DataParsingTests: XCTestCase {
 			try d.writeIntegers(values, .little)
 			XCTAssertEqual(d.storage.count, values.count * 2)
 
-			let p = DataParser(data: d.storage)
+			let p = RandomAccessDataReader(data: d.storage)
 			let ints: [Int16] = try p.readIntegers(.little, count: 3)
 			XCTAssertEqual(ints, values)
 		}
@@ -259,7 +259,7 @@ final class DataParsingTests: XCTestCase {
 			let l = try d.writeString(msg, encoding: .isoLatin1)
 			XCTAssertEqual(13, l)
 
-			let p = DataParser(data: d.storage)
+			let p = RandomAccessDataReader(data: d.storage)
 			let str = try p.readSingleByteBasedString(count: 13, encoding: .isoLatin1)
 			XCTAssertEqual(msg, str)
 		}
@@ -278,7 +278,7 @@ final class DataParsingTests: XCTestCase {
 
 		XCTAssertEqual(18, writer.count)
 
-		let parser = DataParser(data: writer.storage)
+		let parser = RandomAccessDataReader(data: writer.storage)
 		XCTAssertEqual(10101, try parser.readInt16(.big))
 		XCTAssertEqual(40000, try parser.readUInt16(.big))
 		XCTAssertEqual(-10101, try parser.readInt16(.little))
@@ -298,7 +298,7 @@ final class DataParsingTests: XCTestCase {
 		try writer.writeStringUTF32(message, .little)
 		XCTAssertEqual((msgcount * 4) * 2 + 1, writer.count)
 
-		let parser = DataParser(data: writer.storage)
+		let parser = RandomAccessDataReader(data: writer.storage)
 		let str1 = try parser.readUTF32String(.big, count: message.count)
 		XCTAssertEqual(message, str1)
 		XCTAssertEqual(0x78, try parser.readByte())

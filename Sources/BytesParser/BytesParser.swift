@@ -70,7 +70,7 @@ extension BytesParser.Endianness {
 	/// Convert an array of bytes to a fixed width integer value following the endianness rules
 	@inlinable public func convert<T: FixedWidthInteger>(_ intData: Data) -> T {
 		assert(intData.count == MemoryLayout<T>.size)
-		let value = intData.withUnsafeBytes { $0.load(as: T.self) }
+		let value = intData.withUnsafeBytes { $0.loadUnaligned(as: T.self) }
 		return self == .big ? value.bigEndian : value.littleEndian
 	}
 
@@ -78,7 +78,9 @@ extension BytesParser.Endianness {
 	@inlinable public func convert<T: FixedWidthInteger>(_ intData: Data, count: Int) -> [T] {
 		assert(intData.count == (MemoryLayout<T>.size * count))
 		return stride(from: 0, to: count, by: 1).map { offset in
-			let value = intData.withUnsafeBytes { $0.load(fromByteOffset: offset * MemoryLayout<T>.size, as: T.self) }
+			let value = intData.withUnsafeBytes {
+				$0.loadUnaligned(fromByteOffset: offset * MemoryLayout<T>.size, as: T.self)
+			}
 			return self == .big ? value.bigEndian : value.littleEndian
 		}
 	}

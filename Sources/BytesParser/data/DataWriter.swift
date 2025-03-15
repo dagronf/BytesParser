@@ -233,6 +233,29 @@ public extension DataWriter {
 		try self.writeString(string, encoding: (byteOrder == .big) ? .utf16BigEndian : .utf16LittleEndian)
 	}
 
+	/// Write a pascal-style UTF16 string (uint16 length + utf16 characters)
+	/// - Parameters:
+	///   - string: The string to write
+	///   - byteOrder: The byte order to apply when writing
+	/// - Returns: The number of bytes written
+	///
+	/// The written string is _not_ NULL terminated
+	@discardableResult
+	func writePascalStringUTF16(_ string: String, _ byteOrder: BytesParser.Endianness) throws -> Int {
+		// Convert the input string to bytes
+		guard let utf16NameBytes = string.data(using: .utf16LittleEndian) else {
+			throw DataWriterError.unableToEncodeString
+		}
+		// Write the length in characters
+		try self.writeUInt16(UInt16(utf16NameBytes.count / 2), byteOrder)
+
+		// string content
+		if utf16NameBytes.count > 0 {
+			try self.writeData(utf16NameBytes)
+		}
+		return 2 + utf16NameBytes.count
+	}
+
 	/// Write a UTF32 string (not including a terminator)
 	/// - Parameters:
 	///   - string: The string to write
