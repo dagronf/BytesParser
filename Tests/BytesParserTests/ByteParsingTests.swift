@@ -610,4 +610,26 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertEqual(32000, try r1.readInt16(.big))
 		XCTAssertEqual(32000, try r1.readInt16(.little))
 	}
+
+	func testUnalignedLoading() throws {
+
+		// This is checking that loading integers off memory boundaries works as expected
+
+		let d1 = try BytesWriter.build { w in
+			/*  0 */ try w.writeByte(0x54)
+			/*  1 */ try w.writeInt32(1024, .big)      // This integer is not written on a memory boundary
+			/*  5 */ try w.writeByte(0xF2)
+			/*  6 */ try w.writeInt32(-6678, .little)  // This integer is not written on a memory boundary
+			/* 10 */ try w.writeByte(0xaa)
+			/* 11 */ try w.writeUInt16(5, .little)     // This integer is not written on a memory boundary
+		}
+
+		let r = BytesReader(data: d1)
+		XCTAssertEqual(0x54, try r.readByte())
+		XCTAssertEqual(1024, try r.readInt32(.big))
+		XCTAssertEqual(0xF2, try r.readByte())
+		XCTAssertEqual(-6678, try r.readInt32(.little))
+		XCTAssertEqual(0xaa, try r.readByte())
+		XCTAssertEqual(5, try r.readUInt16(.little))
+	}
 }
