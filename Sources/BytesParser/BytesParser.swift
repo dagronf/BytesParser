@@ -41,6 +41,8 @@ public extension BytesReader {
 		case invalidFile
 		case endOfData
 		case invalidStringEncoding
+		case invalidOffset
+		case randomAccessSeekingNotSupportedBySource
 	}
 }
 

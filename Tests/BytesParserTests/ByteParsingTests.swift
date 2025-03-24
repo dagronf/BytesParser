@@ -32,7 +32,7 @@ final class ByteIterableTests: XCTestCase {
 		}
 
 		do {
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let str1 = try data.readStringASCII(length: 5, lengthIncludesTerminator: true)
 			XCTAssertEqual(str1, "fish")
 			let str2 = try data.readStringASCII(length: 4, lengthIncludesTerminator: true)
@@ -41,7 +41,7 @@ final class ByteIterableTests: XCTestCase {
 		}
 
 		do {
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let str1 = try data.readStringASCII(length: 4, lengthIncludesTerminator: false)
 			XCTAssertEqual(str1, "fish")
 			XCTAssertEqual(0x00, try data.readByte())
@@ -75,7 +75,7 @@ final class ByteIterableTests: XCTestCase {
 	func testAsciiRead() throws {
 		// fish and\0chips
 		let d: [UInt8] = [0x66,0x69,0x73,0x68,0x20,0x61,0x6E,0x64,0x00,0x63,0x68,0x69,0x70,0x73,0x00,0x99]
-		let data = BytesReader(content: d)
+		let data = BytesReader(bytes: d)
 		let str1 = try data.readStringASCIINullTerminated()
 		XCTAssertEqual("fish and", str1)
 
@@ -107,7 +107,7 @@ final class ByteIterableTests: XCTestCase {
 
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let str = try data.readStringUTF16NullTerminated(.little)
 			XCTAssertEqual("ab", str)
 			XCTAssertEqual(6, data.offset)
@@ -120,7 +120,7 @@ final class ByteIterableTests: XCTestCase {
 
 		do {
 			let d: [UInt8] = [0x00, 0x61, 0x00, 0x62, 0x00, 0x00, 0x80]
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let str = try data.readStringUTF16NullTerminated(.big)
 			XCTAssertEqual("ab", str)
 
@@ -141,7 +141,7 @@ final class ByteIterableTests: XCTestCase {
 
 		do {
 			let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let str = try data.readStringUTF16(.little, length: 2)
 			XCTAssertEqual("ab", str)
 			XCTAssertTrue(data.hasMoreData)
@@ -167,14 +167,14 @@ final class ByteIterableTests: XCTestCase {
 	func testLengthC() throws {
 		let d: [UInt8] = [0x61, 0x00, 0x62, 0x00, 0x00, 0x00, 0x80]
 		do {
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			let r = try data.readBytes(count: d.count)
 			XCTAssertEqual(r, d)
 			XCTAssertFalse(data.hasMoreData)
 		}
 
 		do {
-			let data = BytesReader(content: d)
+			let data = BytesReader(bytes: d)
 			XCTAssertThrowsError(try data.readBytes(count: 8))
 			try withDataWrittenToTemporaryInputStream(Data(d)) { inputStream in
 				let parser = BytesReader(inputStream: inputStream)

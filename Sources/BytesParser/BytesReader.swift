@@ -21,25 +21,28 @@ import Foundation
 
 /// An object that can iterate through raw byte data and extract parsable data (eg. integers, floats etc)
 public class BytesReader {
-	/// Is there more data to read?
-	public var hasMoreData: Bool { self.inputStream.hasBytesAvailable }
-
-	/// Create a byte parser from a data object
+	/// Create a reader with data
+	/// - Parameter data: The data to read
+	///
+	/// Create a random-access reader (supporting seek)
 	public init(data: Data) {
-		self.inputStream = InputStream(data: data)
-		self.inputStream.open()
+		self.source = InMemorySource(data: data)
 	}
 
-	/// Create a byte parser from an array of bytes
-	public init(content: [UInt8]) {
-		self.inputStream = InputStream(data: Data(content))
-		self.inputStream.open()
+	/// Create a reader containing bytes
+	/// - Parameter bytes: The bytes to read
+	///
+	/// Create a random-access reader (supporting seek)
+	public init(bytes: [UInt8]) {
+		self.source = InMemorySource(bytes: bytes)
 	}
 
-	/// Create a byte parser with an opened input stream
+	/// Create a reader containing an input stream
+	/// - Parameter inputStream: The data stream to read
+	///
+	/// This reader type does not support random access (ie. `seek` calls will fail)
 	public init(inputStream: InputStream) {
-		self.inputStream = inputStream
-		self.inputStream.open()
+		self.source = InputStreamSource(inputStream: inputStream)
 	}
 
 	/// Create a byte parser from the contents of a local file
@@ -51,22 +54,66 @@ public class BytesReader {
 		else {
 			throw BytesReader.ParseError.invalidFile
 		}
-		self.inputStream = inputStream
-		inputStream.open()
+		self.source = InputStreamSource(inputStream: inputStream)
 	}
 
-	/// The current read offset within the input data
-	public func readOffset() -> Int { self.offset }
-
-	// private
-	
-	let readBuffer = ByteBuffer()
-
 	/// The current read offset within the source
-	var offset: Int = 0
+	@inlinable public var offset: Int { self.source.readOffset() }
 
-	// The stream containing the data to be parsed
-	let inputStream: InputStream
+	/// Is there more data available in the source for reading?
+	@inlinable public var hasMoreData: Bool { self.source.hasMoreData }
+
+	/// The byte source
+	@usableFromInline let source: BytesReaderSource
+}
+
+// MARK: - Random access
+
+public extension BytesReader {
+	/// Seek direction
+	enum Seek {
+		/// Seek from start
+		case start
+		/// Seek backwards from end
+		case end
+		/// Seek from current read position
+		case current
+	}
+
+	/// Rewind the read position back to the start of the source
+	@inlinable func rewind() throws {
+		try self.source.rewind()
+	}
+
+	/// Move the read offset from the start of the data
+	/// - Parameter offset: The new read offset
+	@inlinable func seekSet(_ offset: Int) throws {
+		try self.source.seekSet(offset)
+	}
+
+	/// Move the read offset from the end of the data
+	/// - Parameter offset: The distance from the end of the data
+	@inlinable func seekEnd(_ offset: Int) throws {
+		try self.source.seekEnd(offset)
+	}
+
+	/// Seek from the current read location
+	/// - Parameter offset: The offset to move the read position
+	@inlinable func seek(_ offset: Int) throws {
+		try self.source.seek(offset)
+	}
+
+	/// Seek within the source
+	func seek(_ offset: Int, _ direction: Seek) throws {
+		switch direction {
+		case .start:
+			try self.seekSet(offset)
+		case .end:
+			try self.seekEnd(offset)
+		case .current:
+			try self.seek(offset)
+		}
+	}
 }
 
 // MARK: - Convenience readers
@@ -86,7 +133,7 @@ public extension BytesReader {
 	///   - bytes: An array of bytes to parse
 	///   - block: The block containing the parsing calls
 	@inlinable static func read(bytes: [UInt8], _ block: (BytesReader) throws -> Void) throws {
-		let parser = BytesReader(content: bytes)
+		let parser = BytesReader(data: Data(bytes))
 		try block(parser)
 	}
 

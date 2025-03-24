@@ -43,7 +43,7 @@ public extension BytesWriter {
 	///   - byteOrder: The byte order to apply when writing
 	/// - Returns: The number of bytes written
 	@discardableResult
-	func writeInteger<T: FixedWidthInteger>(_ value: [T], _ byteOrder: BytesParser.Endianness) throws -> Int {
+	func writeIntegers<T: FixedWidthInteger>(_ value: [T], _ byteOrder: BytesParser.Endianness) throws -> Int {
 		_ = try value.map { try self.writeInteger($0, byteOrder) }
 		return MemoryLayout<T>.size * value.count
 	}
@@ -65,7 +65,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeInt8(_ value: [Int8]) throws -> Int {
-		try self.writeInteger(value, .big)
+		try self.writeIntegers(value, .big)
 	}
 
 	/// Write an Int16 value
@@ -85,7 +85,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeInt16(_ value: [Int16], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 
 	/// Write an Int32 value
@@ -105,7 +105,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeInt32(_ value: [Int32], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 
 	/// Write an Int64 value
@@ -125,7 +125,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeInt16(_ value: [Int64], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 }
 
@@ -146,7 +146,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeUInt8(_ value: [UInt8]) throws -> Int {
-		try self.writeInteger(value, .big)
+		try self.writeIntegers(value, .big)
 	}
 
 	/// Write a UInt16 value
@@ -166,7 +166,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeInt16(_ value: [UInt16], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 
 	/// Write a UInt32 value
@@ -186,7 +186,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeUInt32(_ value: [UInt32], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 
 	/// Write a UInt64 value
@@ -206,6 +206,6 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeUInt64(_ value: [UInt64], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		try self.writeInteger(value, byteOrder)
+		try self.writeIntegers(value, byteOrder)
 	}
 }

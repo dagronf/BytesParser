@@ -55,6 +55,13 @@ public class BytesWriter {
 		}
 		return data
 	}
+
+	/// Returns the bytes written to the destination **IF** the writer supports generating a `Data` object
+	///
+	/// This method only applies when writing to a `Data` destination
+	@inlinable public func rawBytes() throws -> [UInt8] {
+		Array(try self.data())
+	}
 }
 
 // MARK: - Padding

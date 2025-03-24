@@ -22,30 +22,30 @@ import Foundation
 // MARK: Integer values
 
 public extension BytesReader {
-	/// Read an integer value
-	/// - Parameter byteOrder: Expected endianness for the integer
-	/// - Returns: An integer value
-	///
-	/// See the discussion [here](https://web.archive.org/web/2/https://forums.swift.org/t/convert-uint8-to-int/30117/9)
-	@inlinable func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
-		byteOrder.convert(try self.readData(count: MemoryLayout<T>.size))
+	/// Read an integer value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
+	func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
+		let data = try self.source.readData(count: MemoryLayout<T>.size)
+		let value = data.withUnsafeBytes { $0.loadUnaligned(as: T.self) }
+		return byteOrder == .big ? value.bigEndian : value.littleEndian
 	}
 
-	/// Read an array of integers
+	/// Read integers from the storage
 	/// - Parameters:
-	///   - byteOrder: The byte order of the integers
-	///   - count: The number of integers to read
-	/// - Returns: An array of integers
-	@inlinable func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [T] {
-		let data = try self.readData(count: MemoryLayout<T>.size * count)
-		return byteOrder.convert(data, count: count)
+	///   - byteOrder: The expected byte order for each integer
+	///   - count: The expected number of integers to read
+	/// - Returns: The read integers
+	func readIntegers<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [T] {
+		try (0 ..< count).map { _ in
+			try self.readInteger(byteOrder)
+		}
 	}
 }
 
 public extension BytesReader {
-	/// Read an Int8 value
+	/// Read a Int8 value
 	@inlinable func readInt8() throws -> Int8 {
-		// Remap the UInt8 value to an Int8 value
 		Int8(bitPattern: try self.readByte())
 	}
 
@@ -54,16 +54,14 @@ public extension BytesReader {
 	/// - Returns: An array of integers
 	@inlinable func readInt8(count: Int) throws -> [Int8] {
 		let bytes = try self.readBytes(count: count)
-
-		// Remap the UInt8 value to an Int8 value
 		return bytes.map { Int8(bitPattern: $0) }
 	}
 
-	/// Read an Int16 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an Int16 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readInt16(_ byteOrder: BytesParser.Endianness) throws -> Int16 {
-		try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of Int16 values
@@ -72,14 +70,14 @@ public extension BytesReader {
 	///   - count: The number of integers to read
 	/// - Returns: An array of integers
 	@inlinable func readInt16(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Int16] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 
-	/// Read an Int32 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an Int32 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readInt32(_ byteOrder: BytesParser.Endianness) throws -> Int32 {
-		try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of Int32 values
@@ -88,14 +86,14 @@ public extension BytesReader {
 	///   - count: The number of integers to read
 	/// - Returns: An array of integers
 	@inlinable func readInt32(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Int32] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 
-	/// Read an Int64 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an Int64 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readInt64(_ byteOrder: BytesParser.Endianness) throws -> Int64 {
-		return try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of Int64 values
@@ -104,70 +102,68 @@ public extension BytesReader {
 	///   - count: The number of integers to read
 	/// - Returns: An array of integers
 	@inlinable func readInt64(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Int64] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 }
 
-// MARK: Unsigned integer values
-
 public extension BytesReader {
-	/// Read a UInt8 value
+	/// Read a Int8 value
 	@inlinable func readUInt8() throws -> UInt8 {
-		return try self.readByte()
+		try self.readByte()
 	}
 
-	/// Read an array of UInt8 values
+	/// Read an array of integer values
 	/// - Parameter count: The number of values to read
-	/// - Returns: An array of unsigned integers
+	/// - Returns: An array of integers
 	@inlinable func readUInt8(count: Int) throws -> [UInt8] {
 		try self.readBytes(count: count)
 	}
 
-	/// Read a UInt16 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an UInt16 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readUInt16(_ byteOrder: BytesParser.Endianness) throws -> UInt16 {
-		return try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of UInt16 values
 	/// - Parameters:
 	///   - byteOrder: The expected endianness for the integer
 	///   - count: The number of integers to read
-	/// - Returns: An array of unsigned ints
+	/// - Returns: An array of integers
 	@inlinable func readUInt16(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [UInt16] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 
-	/// Read a UInt32 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an UInt32 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readUInt32(_ byteOrder: BytesParser.Endianness) throws -> UInt32 {
-		return try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of UInt32 values
 	/// - Parameters:
 	///   - byteOrder: The expected endianness for the integer
 	///   - count: The number of integers to read
-	/// - Returns: An array of unsigned ints
+	/// - Returns: An array of integers
 	@inlinable func readUInt32(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [UInt32] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 
-	/// Read a UInt64 value
-	/// - Parameter byteOrder: The expected endianness for the integer
-	/// - Returns: An integer
+	/// Read an UInt64 value from the storage
+	/// - Parameter byteOrder: The expected byte order for the integer
+	/// - Returns: The integer value
 	@inlinable func readUInt64(_ byteOrder: BytesParser.Endianness) throws -> UInt64 {
-		return try self.readInteger(byteOrder)
+		try readInteger(byteOrder)
 	}
 
 	/// Read an array of UInt64 values
 	/// - Parameters:
 	///   - byteOrder: The expected endianness for the integer
 	///   - count: The number of integers to read
-	/// - Returns: An array of unsigned ints
+	/// - Returns: An array of integers
 	@inlinable func readUInt64(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [UInt64] {
-		try readInteger(byteOrder, count: count)
+		try self.readIntegers(byteOrder, count: count)
 	}
 }

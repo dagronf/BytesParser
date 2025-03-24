@@ -32,7 +32,7 @@ let magic = try reader.readString(length: 8, encoding: .ascii)
 assert("8BCBAFFE", magic)
 
 // Read 12-character little-endian encoded WCS2 (UTF16) string 
-let title = try reader.readUTF16String(.little, length: 12)
+let title = try reader.readStringUTF16(.little, length: 12)
 let length = try reader.readInt16(.little)
 let offset = try reader.readInt32(.little)
 ```

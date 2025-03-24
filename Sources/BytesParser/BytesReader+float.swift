@@ -28,7 +28,7 @@ public extension BytesReader {
 	///
 	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
 	func readFloat32(_ byteOrder: BytesParser.Endianness) throws -> Float32 {
-		return Float32(bitPattern: try readUInt32(byteOrder))
+		return Float32(bitPattern: try self.readUInt32(byteOrder))
 	}
 
 	/// Read an array of Float32 values
@@ -38,7 +38,7 @@ public extension BytesReader {
 	/// - Returns: An array of float values
 	@inlinable func readFloat32(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Float32] {
 		assert(count > 0)
-		let values = try readUInt32(byteOrder, count: count)
+		let values = try self.readUInt32(byteOrder, count: count)
 		return values.map { Float32(bitPattern: $0) }
 	}
 
@@ -48,7 +48,7 @@ public extension BytesReader {
 	///
 	/// [IEEE 754 specification](http://ieeexplore.ieee.org/servlet/opac?punumber=4610933)
 	@inlinable func readFloat64(_ byteOrder: BytesParser.Endianness) throws -> Float64 {
-		Float64(bitPattern: try readUInt64(byteOrder))
+		Float64(bitPattern: try self.readUInt64(byteOrder))
 	}
 
 	/// Read an array of Float64 values
@@ -58,7 +58,7 @@ public extension BytesReader {
 	/// - Returns: An array of float values
 	@inlinable func readFloat64(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Float64] {
 		assert(count > 0)
-		let values = try readUInt64(byteOrder, count: count)
+		let values = try self.readUInt64(byteOrder, count: count)
 		return values.map { Float64(bitPattern: $0) }
 	}
 }
@@ -67,8 +67,8 @@ public extension BytesReader {
 	/// Read a double (64-bit) value
 	/// - Parameter byteOrder: The byte order
 	/// - Returns: A double value
-	func readDouble(_ byteOrder: BytesParser.Endianness) throws -> Double {
-		Float64(bitPattern: try readUInt64(byteOrder))
+	@inlinable func readDouble(_ byteOrder: BytesParser.Endianness) throws -> Double {
+		Float64(bitPattern: try self.readUInt64(byteOrder))
 	}
 
 	/// Read an array of Double values
@@ -78,7 +78,7 @@ public extension BytesReader {
 	/// - Returns: An array of double values
 	@inlinable func readDouble(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [Double] {
 		assert(count > 0)
-		let values = try readUInt64(byteOrder, count: count)
+		let values = try self.readUInt64(byteOrder, count: count)
 		return values.map { Double(bitPattern: $0) }
 	}
 }

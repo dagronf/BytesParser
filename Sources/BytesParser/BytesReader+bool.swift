@@ -26,7 +26,7 @@ public extension BytesReader {
 	///
 	/// `0x00` -> `false`, anything else -> `true`
 	@inlinable func readBool() throws -> Bool {
-		try self.readByte() != 0x00
+		try self.source.readByte() != 0x00
 	}
 
 	/// Read an array of bool byte values
@@ -35,7 +35,7 @@ public extension BytesReader {
 	/// - Returns: An array of bool
 	@inlinable func readBool(count: Int) throws -> [Bool] {
 		assert(count > 0)
-		let data = try readData(count: count)
+		let data = try self.source.readData(count: count)
 		return data.map { $0 != 0x00 }
 	}
 }

@@ -121,6 +121,25 @@ public extension BytesWriter {
 		return data.count + (includeNullTerminator ? 4 : 0)
 	}
 
+	/// Write a wide (4-byte) string
+	/// - Parameters:
+	///   - string: The string to write
+	///   - encoding: The endianness
+	///   - includeNullTerminator: If true, adds a string termination character (00 00 00 00)
+	/// - Returns: The number of bytes written
+	@discardableResult
+	@inlinable func writeStringUTF32(
+		_ string: String,
+		endianness: BytesParser.Endianness,
+		includeNullTerminator: Bool = false
+	) throws -> Int {
+		try self.writeStringWide32(
+			string,
+			encoding: endianness == .big ? .utf32BigEndian : .utf32LittleEndian,
+			includeNullTerminator: includeNullTerminator
+		)
+	}
+
 	/// Write a UTF32 big endian string
 	/// - Parameters:
 	///   - string: The string to write

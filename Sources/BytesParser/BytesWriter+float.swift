@@ -39,7 +39,7 @@ public extension BytesWriter {
 	@inlinable func writeFloat32(_ value: [Float32], _ byteOrder: BytesParser.Endianness) throws -> Int {
 //		try value.forEach { try self.writeInteger($0.bitPattern, byteOrder) }
 		let bitpats: [UInt32] = value.map { $0.bitPattern }
-		return try self.writeInteger(bitpats, byteOrder)
+		return try self.writeIntegers(bitpats, byteOrder)
 	}
 
 	/// Write a float64 (Double) value to the stream using the IEEE 754 specification
@@ -60,7 +60,7 @@ public extension BytesWriter {
 	@discardableResult
 	@inlinable func writeFloat64(_ value: [Float64], _ byteOrder: BytesParser.Endianness) throws -> Int {
 		let bitpats: [UInt64] = value.map { $0.bitPattern }
-		return try self.writeInteger(bitpats, byteOrder)
+		return try self.writeIntegers(bitpats, byteOrder)
 	}
 }
 
@@ -83,6 +83,6 @@ public extension BytesWriter {
 	@discardableResult
 	@inlinable func writeDouble(_ value: [Double], _ byteOrder: BytesParser.Endianness) throws -> Int {
 		let bitpats: [UInt64] = value.map { $0.bitPattern }
-		return try self.writeInteger(bitpats, byteOrder)
+		return try self.writeIntegers(bitpats, byteOrder)
 	}
 }

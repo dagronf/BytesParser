@@ -50,7 +50,7 @@ public extension BytesReader {
 	/// NOTE: Slower as we have to read byte-by-byte. Also less safe than the length specific version!
 	func readStringSingleByteEncodingNullTerminated(_ encoding: String.Encoding) throws -> String {
 		// Read data up to the next instance of the (single-byte) string terminator
-		var rawContent = try readUpToNextInstanceOfByte(0x00)
+		var rawContent = try self.readUpToNextInstanceOfByte(0x00)
 		if rawContent.last == 0x00 {
 			// Remove the last terminator character
 			// Note that the last character is _not_ guaranteed to be nil IF we hit the EOD
@@ -81,7 +81,6 @@ public extension BytesReader {
 		try self.readStringSingleByteEncodingNullTerminated(.ascii)
 	}
 }
-
 
 public extension BytesReader {
 	/// Read a UTF8 string using a byte count
@@ -127,7 +126,7 @@ public extension BytesReader {
 	/// - Returns: A string
 	func readStringWide16NullTerminated(encoding: String.Encoding) throws -> String {
 		var rawContent = Data(capacity: 1024)
-		while self.hasMoreData {
+		while self.source.hasMoreData {
 			let char = try self.readData(count: 2)
 			if char.map({ $0 }) == BytesParser.terminator16 { break }
 			rawContent += char
@@ -207,7 +206,7 @@ public extension BytesReader {
 	/// - Returns: A string
 	func readStringWide32NullTerminated(_ encoding: String.Encoding) throws -> String {
 		var rawContent = Data(capacity: 1024)
-		while self.hasMoreData {
+		while self.source.hasMoreData {
 			let char = try self.readData(count: 4)
 			if char.map({ $0 }) == BytesParser.terminator32 { break }
 			rawContent += char
