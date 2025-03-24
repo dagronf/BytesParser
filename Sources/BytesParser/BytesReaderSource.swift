@@ -99,7 +99,7 @@ public class InMemorySource: BytesReaderSource {
 	/// - Returns: Data
 	public func readData(count: Int) throws -> Data {
 		guard self.readPosition + count <= self.count else {
-			throw BytesReader.ParseError.endOfData
+			throw BytesReader.ReaderError.endOfData
 		}
 		defer { self.readPosition += count }
 		return self.storage[self.readPosition ..< self.readPosition + count]
@@ -109,7 +109,7 @@ public class InMemorySource: BytesReaderSource {
 	/// - Returns: A byte
 	public func readByte() throws -> UInt8 {
 		guard self.readPosition < self.count else {
-			throw BytesReader.ParseError.endOfData
+			throw BytesReader.ReaderError.endOfData
 		}
 		defer { self.readPosition += 1 }
 		return self.storage[self.readPosition]
@@ -141,7 +141,7 @@ public class InMemorySource: BytesReaderSource {
 	/// - Parameter offset: The offset to move the read position
 	public func seek(_ offset: Int) throws {
 		guard (0 ..< self.count).contains(self.readPosition + offset) else {
-			throw BytesReader.ParseError.invalidOffset
+			throw BytesReader.ReaderError.invalidOffset
 		}
 		self.readPosition += offset
 	}
@@ -150,7 +150,7 @@ public class InMemorySource: BytesReaderSource {
 	/// - Parameter offset: The new read offset
 	public func seekSet(_ offset: Int) throws {
 		guard offset >= 0, offset < storage.count else {
-			throw BytesReader.ParseError.invalidOffset
+			throw BytesReader.ReaderError.invalidOffset
 		}
 		self.readPosition = offset
 	}
@@ -159,7 +159,7 @@ public class InMemorySource: BytesReaderSource {
 	/// - Parameter offset: The distance from the end of the data
 	public func seekEnd(_ offset: Int) throws {
 		guard offset >= 0, offset < self.count else {
-			throw BytesReader.ParseError.invalidOffset
+			throw BytesReader.ReaderError.invalidOffset
 		}
 		self.readPosition = self.count - offset
 	}
@@ -192,7 +192,7 @@ public class InputStreamSource: BytesReaderSource {
 
 	public func readData(count: Int) throws -> Data {
 		assert(count > 0)
-		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ReaderError.endOfData }
 
 		// Make sure our internal buffer is big enough to hold all the data required
 		self.readBuffer.requireSize(count)
@@ -205,12 +205,12 @@ public class InputStreamSource: BytesReaderSource {
 			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: count - read)
 			if readCount < 0 {
 				// The operation failed
-				throw BytesReader.ParseError.endOfData
+				throw BytesReader.ReaderError.endOfData
 			}
 			if readCount == 0, !self.inputStream.hasBytesAvailable {
 				// If we haven't read anything and there's no more data to read,
 				// then we're at the end of file
-				throw BytesReader.ParseError.endOfData
+				throw BytesReader.ReaderError.endOfData
 			}
 
 			if readCount > 0 {
@@ -227,11 +227,11 @@ public class InputStreamSource: BytesReaderSource {
 
 	public func readByte() throws -> UInt8 {
 		guard self.inputStream.hasBytesAvailable else {
-			throw BytesReader.ParseError.endOfData
+			throw BytesReader.ReaderError.endOfData
 		}
 		self.readBuffer.requireSize(1)
 		let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: 1)
-		guard readCount == 1 else { throw BytesReader.ParseError.endOfData }
+		guard readCount == 1 else { throw BytesReader.ReaderError.endOfData }
 		self.readPosition += 1
 		return self.readBuffer.buffer.pointee
 	}
@@ -241,7 +241,7 @@ public class InputStreamSource: BytesReaderSource {
 	/// After this call, any further reads will throw (end of data)
 	public func readAllRemainingData() throws -> Data {
 		// If the stream has no data available throw endOfData
-		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ParseError.endOfData }
+		guard self.inputStream.hasBytesAvailable else { throw BytesReader.ReaderError.endOfData }
 
 		// The chunk size for reading to the end of the file
 		let CHUNK_SZ = 16384
@@ -254,7 +254,7 @@ public class InputStreamSource: BytesReaderSource {
 			let readCount = self.inputStream.read(self.readBuffer.buffer, maxLength: CHUNK_SZ)
 			if readCount < 0 {
 				// -1 means that the operation failed
-				throw BytesReader.ParseError.endOfData
+				throw BytesReader.ReaderError.endOfData
 			}
 
 			self.readPosition += readCount
@@ -273,18 +273,18 @@ public class InputStreamSource: BytesReaderSource {
 	}
 
 	public func rewind() throws {
-		throw BytesReader.ParseError.randomAccessSeekingNotSupportedBySource
+		throw BytesReader.ReaderError.randomAccessSeekingNotSupportedBySource
 	}
 	
 	public func seekSet(_ offset: Int) throws {
-		throw BytesReader.ParseError.randomAccessSeekingNotSupportedBySource
+		throw BytesReader.ReaderError.randomAccessSeekingNotSupportedBySource
 	}
 	
 	public func seekEnd(_ offset: Int) throws {
-		throw BytesReader.ParseError.randomAccessSeekingNotSupportedBySource
+		throw BytesReader.ReaderError.randomAccessSeekingNotSupportedBySource
 	}
 	
 	public func seek(_ offset: Int) throws {
-		throw BytesReader.ParseError.randomAccessSeekingNotSupportedBySource
+		throw BytesReader.ReaderError.randomAccessSeekingNotSupportedBySource
 	}
 }

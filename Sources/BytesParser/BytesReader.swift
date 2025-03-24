@@ -52,7 +52,7 @@ public class BytesReader {
 			fileURL.isFileURL,
 			let inputStream = InputStream(url: fileURL)
 		else {
-			throw BytesReader.ParseError.invalidFile
+			throw BytesReader.ReaderError.invalidFile
 		}
 		self.source = InputStreamSource(inputStream: inputStream)
 	}

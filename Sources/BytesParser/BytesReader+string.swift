@@ -38,7 +38,7 @@ public extension BytesReader {
 			stringData = stringData.dropLast(1)
 		}
 		guard let str = String(data: stringData, encoding: encoding) else {
-			throw BytesReader.ParseError.invalidStringEncoding
+			throw BytesReader.ReaderError.invalidStringEncoding
 		}
 		return str
 	}
@@ -57,7 +57,7 @@ public extension BytesReader {
 			rawContent = rawContent.dropLast()
 		}
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw BytesReader.ParseError.invalidStringEncoding
+			throw BytesReader.ReaderError.invalidStringEncoding
 		}
 		return str
 	}
@@ -117,7 +117,7 @@ public extension BytesReader {
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
-		throw BytesReader.ParseError.invalidStringEncoding
+		throw BytesReader.ReaderError.invalidStringEncoding
 	}
 
 	/// Read a wide string (2-byte characters) up to the string's null terminator
@@ -134,7 +134,7 @@ public extension BytesReader {
 		if let str = String(data: rawContent, encoding: encoding) {
 			return str
 		}
-		throw BytesReader.ParseError.invalidStringEncoding
+		throw BytesReader.ReaderError.invalidStringEncoding
 	}
 }
 
@@ -182,7 +182,7 @@ public extension BytesReader {
 		guard length > 0 else { return "" }
 		let rawContent = try self.readData(count: length * 4)
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw BytesReader.ParseError.invalidStringEncoding
+			throw BytesReader.ReaderError.invalidStringEncoding
 		}
 		return str
 	}
@@ -213,7 +213,7 @@ public extension BytesReader {
 		}
 
 		guard let str = String(data: rawContent, encoding: encoding) else {
-			throw BytesReader.ParseError.invalidStringEncoding
+			throw BytesReader.ReaderError.invalidStringEncoding
 		}
 
 		return str

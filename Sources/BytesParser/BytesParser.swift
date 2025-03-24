@@ -37,7 +37,7 @@ public class BytesParser {
 
 public extension BytesReader {
 	/// Errors thrown by the parser
-	enum ParseError: Error {
+	enum ReaderError: Error {
 		case invalidFile
 		case endOfData
 		case invalidStringEncoding
