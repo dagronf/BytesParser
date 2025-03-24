@@ -19,10 +19,9 @@ Supports :-
 
 ## Reading
 
-The `BytesParser` class type provides the basic mechanism for reading and extracting useful information
-from binary data.
+The `BytesReader` class type provides the basic mechanism for reading and extracting useful information from binary data.
 
-### Using a BytesParser Object 
+### Using a BytesReader Object 
 
 ```swift
 let reader = BytesReader(data: <some data object>)

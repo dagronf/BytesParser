@@ -60,7 +60,7 @@ public extension BytesReaderSource {
 
 // MARK: - An in-memory data source
 
-/// An in-memory data source.  Supports random access called like `seek`.
+/// An in-memory data source.  Supports random access calls like `seek`.
 public class InMemorySource: BytesReaderSource {
 
 	/// The data
