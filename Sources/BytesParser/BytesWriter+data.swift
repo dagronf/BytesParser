@@ -47,14 +47,23 @@ public extension BytesWriter {
 	/// - Parameter byte: The byte to write
 	/// - Returns: The number of bytes written
 	@discardableResult
-	@inlinable func writeByte(_ byte: UInt8) throws -> Int {
-		try self.writeBytes([byte])
+	func writeByte(_ byte: UInt8) throws -> Int {
+		let writtenCount = withUnsafePointer(to: byte) {
+			self.outputStream.write($0, maxLength: 1)
+		}
+		guard writtenCount == 1 else {
+			throw BytesWriter.WriterError.unableToWriteBytes
+		}
+		self.count += 1
+		return 1
 	}
 }
 
 internal extension BytesWriter {
 	/// Write the contents of a raw buffer pointer to the destination
 	func writeBuffer(_ buffer: UnsafeRawBufferPointer, byteCount: Int) throws -> Int {
+		assert(byteCount >= 0)
+
 		if byteCount == 0 { return 0 }
 		guard let buffer = buffer.baseAddress else {
 			throw BytesWriter.WriterError.emptyBuffer
