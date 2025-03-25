@@ -306,7 +306,7 @@ final class RandomAccessParsingTests: XCTestCase {
 		do {
 			let msg = "© Hello There"
 			let d = try BytesWriter()
-			let l = try d.writeStringByte(msg, encoding: .isoLatin1)
+			let l = try d.writeStringSingleByteEncoding(msg, encoding: .isoLatin1)
 			XCTAssertEqual(13, l)
 
 			let p = BytesReader(data: try d.data())

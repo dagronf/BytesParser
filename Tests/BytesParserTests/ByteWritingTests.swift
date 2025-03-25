@@ -64,7 +64,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeUInt16(101, .little) // 2
 			try writer.writeUInt32(77688, .big)  // 4
 			try writer.writeUInt16(2987, .little)  // 2
-			try writer.writeStringByte("abcd", encoding: .ascii) // 4
+			try writer.writeStringSingleByteEncoding("abcd", encoding: .ascii) // 4
 			try writer.writeBool(true) // 1
 			try writer.writeFloat64(12345.12345, .big) // 8
 			try writer.writeBool(false) // 1
@@ -101,7 +101,7 @@ final class DataWritingTests: XCTestCase {
 				try writer.writeUInt16(101, .little)
 				try writer.writeUInt32(77688, .big)
 				try writer.writeUInt16(2987, .little)
-				try writer.writeStringByte("abcd", encoding: .ascii)
+				try writer.writeStringSingleByteEncoding("abcd", encoding: .ascii)
 				try writer.writeBool(true)
 				try writer.writeStringUTF8(message, includeNullTerminator: true)
 				try writer.writeFloat64(12345.12345, .big)

@@ -28,7 +28,7 @@ public extension BytesWriter {
 	///   - encoding: The encoding to use
 	/// - Returns: The number of bytes written
 	@discardableResult
-	func writeStringByte(_ string: String, encoding: String.Encoding, includeNullTerminator: Bool = false) throws -> Int {
+	func writeStringSingleByteEncoding(_ string: String, encoding: String.Encoding, includeNullTerminator: Bool = false) throws -> Int {
 		guard let data = string.data(using: encoding) else {
 			throw WriterError.cannotConvertStringEncoding
 		}
@@ -47,7 +47,7 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeStringASCII(_ string: String, includeNullTerminator: Bool = false) throws -> Int {
-		try self.writeStringByte(string, encoding: .ascii, includeNullTerminator: includeNullTerminator)
+		try self.writeStringSingleByteEncoding(string, encoding: .ascii, includeNullTerminator: includeNullTerminator)
 	}
 
 	/// Write a UTF8 String
@@ -57,7 +57,17 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	@discardableResult
 	@inlinable func writeStringUTF8(_ string: String, includeNullTerminator: Bool = false) throws -> Int {
-		try self.writeStringByte(string, encoding: .utf8, includeNullTerminator: includeNullTerminator)
+		try self.writeStringSingleByteEncoding(string, encoding: .utf8, includeNullTerminator: includeNullTerminator)
+	}
+
+	/// Write a isoLatin1 String
+	/// - Parameters:
+	///   - string: The string to write
+	///   - includeNullTerminator: If true, includes a string termination character (00)
+	/// - Returns: The number of bytes written
+	@discardableResult
+	@inlinable func writeStringISOLatin1(_ string: String, includeNullTerminator: Bool = false) throws -> Int {
+		try self.writeStringSingleByteEncoding(string, encoding: .isoLatin1, includeNullTerminator: includeNullTerminator)
 	}
 }
 
