@@ -23,12 +23,11 @@ import Foundation
 
 /// An in-memory data source.  Supports random access calls like `seek`.
 public class InMemorySource: BytesReaderSource {
-
 	/// The data
 	let storage: Data
 
 	/// The number of bytes in the source
-	public var count: Int { storage.count }
+	public var count: Int { self.storage.count }
 
 	/// The current read position in the data
 	public private(set) var readPosition: Int = 0
@@ -79,7 +78,8 @@ public class InMemorySource: BytesReaderSource {
 	/// Reads bytes from the source
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: An array of bytes
-	@inlinable public func readBytes(count: Int) throws -> [UInt8] {
+	@inlinable @inline(__always)
+	public func readBytes(count: Int) throws -> [UInt8] {
 		Array(try self.readData(count: count))
 	}
 
@@ -101,27 +101,28 @@ public class InMemorySource: BytesReaderSource {
 	/// Seek from the current read location
 	/// - Parameter offset: The offset to move the read position
 	public func seek(_ offset: Int) throws {
-		guard (0 ..< self.count).contains(self.readPosition + offset) else {
+		guard self.readPosition + offset < self.count else {
 			throw BytesReader.ReaderError.invalidOffset
 		}
 		self.readPosition += offset
 	}
 
-	/// Move the read offset from the start of the data
+	/// Move the read location from the start of the data
 	/// - Parameter offset: The new read offset
 	public func seekSet(_ offset: Int) throws {
-		guard offset >= 0, offset < storage.count else {
+		guard offset >= 0, offset < self.count else {
 			throw BytesReader.ReaderError.invalidOffset
 		}
 		self.readPosition = offset
 	}
 
-	/// Move the read offset from the end of the data
+	/// Move the read location from the end of the data
 	/// - Parameter offset: The distance from the end of the data
 	public func seekEnd(_ offset: Int) throws {
-		guard offset >= 0, offset < self.count else {
+		let newPos = self.count - 1 - offset
+		guard newPos >= 0, newPos < self.count else {
 			throw BytesReader.ReaderError.invalidOffset
 		}
-		self.readPosition = self.count - offset
+		self.readPosition = newPos
 	}
 }
