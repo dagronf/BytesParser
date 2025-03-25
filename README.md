@@ -8,7 +8,7 @@ A simple byte-oriented parser/writer. Read and write formatted values to/from bi
 
 Supports :-
 
-* reading to/writing from a `Data` object, a file URL or an `OutputStream` object
+* reading to/writing from a `Data` object, a file URL or an `InputStream` object
 * different endianness, even within the same file
 * different string encodings, including multi-byte encodings like UInt32
 * explicit string null-termination handling

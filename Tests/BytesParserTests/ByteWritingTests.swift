@@ -44,14 +44,14 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(3, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			// Map byte to a Int8
 			XCTAssertEqual(-10, try parser.readInt8())
 			XCTAssertEqual(10, try parser.readInt8())
 			XCTAssertEqual(-22, try parser.readInt8())
 		}
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(246, try parser.readUInt8())
 			XCTAssertEqual(10, try parser.readUInt8())
 			XCTAssertEqual(234, try parser.readUInt8())
@@ -142,7 +142,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(22345, try parser.readUInt32(.big))
 			XCTAssertThrowsError(try parser.readByte())
 		}
@@ -156,7 +156,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(true, try parser.readBool())
 			XCTAssertEqual(0xff, try parser.readByte())
 			XCTAssertEqual(0xff, try parser.readByte())
@@ -174,7 +174,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0x0, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -192,7 +192,7 @@ final class DataWritingTests: XCTestCase {
 
 		XCTAssertEqual(4, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(22345, try parser.readInt16(.big))
 			XCTAssertEqual(0xcd, try parser.readByte())
 			XCTAssertEqual(0x0, try parser.readByte())
@@ -266,7 +266,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeFloat32(vals, .little)
 		}
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			let v1 = try parser.readFloat32(.big, count: vals.count)
 			let v2 = try parser.readFloat32(.little, count: vals.count)
 
@@ -288,7 +288,7 @@ final class DataWritingTests: XCTestCase {
 			try writer.writeFloat64(vals, .little)
 		}
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			let v1 = try parser.readFloat64(.big, count: vals.count)
 			let v2 = try parser.readFloat64(.little, count: vals.count)
 
@@ -296,7 +296,7 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertEqual(vals, v2)
 		}
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			let v1 = try parser.readFloat64(.little, count: vals.count)
 			let v2 = try parser.readFloat64(.big, count: vals.count)
 
@@ -315,7 +315,7 @@ final class DataWritingTests: XCTestCase {
 			try w.writeInt16(123, .little)
 		}
 
-		try BytesReader.read(data: data) { r in
+		try data.bytesReader { r in
 			let rw = try r.readBytes(count: raw.count)
 			XCTAssertEqual(raw, rw)
 
@@ -345,7 +345,7 @@ final class DataWritingTests: XCTestCase {
 			XCTAssertEqual(10, try w.writeStringUTF16LE(si1))
 		}
 
-		try BytesReader.read(data:data) { r in
+		try data.bytesReader { r in
 			XCTAssertEqual(25, try r.readUInt8())
 			XCTAssertEqual(ui1, try r.readUInt8(count: 3))
 			XCTAssertEqual(-25, try r.readInt8())

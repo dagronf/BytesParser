@@ -9,14 +9,14 @@ final class ByteIterableTests: XCTestCase {
 			let data = BytesReader(data: d)
 			let r = try data.readUpToNextNullByte()
 			XCTAssertEqual(r, d)
-			XCTAssertEqual(15, data.offset)
+			XCTAssertEqual(15, data.readPosition)
 		}
 
 		do {
 			let data = BytesReader(data: d)
 			let r = try data.readUpToNextInstanceOfByte(0x20)
 			XCTAssertEqual(r, Data([0x66, 0x69, 0x73, 0x68, 0x20]))
-			XCTAssertEqual(5, data.offset)
+			XCTAssertEqual(5, data.readPosition)
 		}
 	}
 
@@ -110,7 +110,7 @@ final class ByteIterableTests: XCTestCase {
 			let data = BytesReader(bytes: d)
 			let str = try data.readStringUTF16NullTerminated(.little)
 			XCTAssertEqual("ab", str)
-			XCTAssertEqual(6, data.offset)
+			XCTAssertEqual(6, data.readPosition)
 
 			let b = try data.readByte()
 			XCTAssertEqual(0x80, b)
@@ -207,7 +207,7 @@ final class ByteIterableTests: XCTestCase {
 
 		XCTAssertEqual(18, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			XCTAssertEqual(10101, try parser.readInt16(.big))
 			XCTAssertEqual(40000, try parser.readUInt16(.big))
 			XCTAssertEqual(-10101, try parser.readInt16(.little))
@@ -228,7 +228,7 @@ final class ByteIterableTests: XCTestCase {
 		}
 		XCTAssertEqual((msgcount*4)*2 + 1, data.count)
 
-		try BytesReader.read(data: data) { parser in
+		try data.bytesReader { parser in
 			let str1 = try parser.readStringWide32(.utf32BigEndian, length: message.count)
 			XCTAssertEqual(message, str1)
 			XCTAssertEqual(0x78, try parser.readByte())
@@ -410,7 +410,7 @@ final class ByteIterableTests: XCTestCase {
 			XCTAssertEqual(0, try parser.readByte())
 			
 			do {
-				let offset = Int(playlistStartOffset) - parser.offset
+				let offset = Int(playlistStartOffset) - parser.readPosition
 				if offset > 0 {
 					_ = try parser.readBytes(count: offset)
 				}
@@ -631,5 +631,75 @@ final class ByteIterableTests: XCTestCase {
 		XCTAssertEqual(-6678, try r.readInt32(.little))
 		XCTAssertEqual(0xaa, try r.readByte())
 		XCTAssertEqual(5, try r.readUInt16(.little))
+	}
+
+	func testReadWriteIntegersArrayMemoryAlignment() throws {
+		let w = try BytesWriter()
+
+		try w.writeInt32((0 ..< 1024).map { Int32($0) }, .little)
+		try w.writeByte(0x11)
+		try w.writeInt16((0 ..< 1024).map { Int16($0) }, .big)
+		try w.writeByte(0x22)
+		try w.writeFloat64((0 ..< 1024).map { Float64($0) }, .little)
+		try w.writeByte(0x33)
+		try w.writeUInt32(12345678, .big)
+
+		let data = try w.data()
+
+		// Reading from memory
+		do {
+			let r = BytesReader(data: data)
+
+			let ints = try! r.readInt32(.little, count: 1024)
+			XCTAssertEqual(ints.count, 1024)
+			XCTAssertEqual((0 ..< 1024).map { Int32($0) }, ints)
+
+			XCTAssertEqual(0x11, try! r.readByte())
+
+			let int16s = try! r.readInt16(.big, count: 1024)
+			XCTAssertEqual(int16s.count, 1024)
+			XCTAssertEqual((0 ..< 1024).map { Int16($0) }, int16s)
+
+			XCTAssertEqual(0x22, try! r.readByte())
+
+			let floats = try! r.readFloat64(.little, count: 1024)
+			XCTAssertEqual(floats.count, 1024)
+			XCTAssertEqual((0 ..< 1024).map { Float64($0) }, floats)
+
+			XCTAssertEqual(0x33, try! r.readByte())
+
+			XCTAssertEqual(12345678, try! r.readUInt32(.big))
+
+			XCTAssertFalse(r.hasMoreData)
+		}
+
+		// Try reading via InputStream
+		do {
+			try withDataWrittenToTemporaryFile(data) { tempFile in
+				let r = try BytesReader(fileURL: tempFile)
+
+				let ints = try! r.readInt32(.little, count: 1024)
+				XCTAssertEqual(ints.count, 1024)
+				XCTAssertEqual((0 ..< 1024).map { Int32($0) }, ints)
+
+				XCTAssertEqual(0x11, try! r.readByte())
+
+				let int16s = try! r.readInt16(.big, count: 1024)
+				XCTAssertEqual(int16s.count, 1024)
+				XCTAssertEqual((0 ..< 1024).map { Int16($0) }, int16s)
+
+				XCTAssertEqual(0x22, try! r.readByte())
+
+				let floats = try! r.readFloat64(.little, count: 1024)
+				XCTAssertEqual(floats.count, 1024)
+				XCTAssertEqual((0 ..< 1024).map { Float64($0) }, floats)
+
+				XCTAssertEqual(0x33, try! r.readByte())
+
+				XCTAssertEqual(12345678, try! r.readUInt32(.big))
+
+				XCTAssertThrowsError(try r.readByte())
+			}
+		}
 	}
 }

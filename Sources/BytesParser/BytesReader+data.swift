@@ -19,32 +19,36 @@
 
 import Foundation
 
+// MARK: - BytesReader Data/Byte handling
+
 public extension BytesReader {
 	/// Read a single byte from the input stream
 	/// - Returns: A byte
-	func readByte() throws -> UInt8 {
+	@inlinable @inline(__always) func readByte() throws -> UInt8 {
 		try self.source.readByte()
 	}
 
 	/// Read the next `count` bytes into a byte array
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: An array of bytes
-	func readBytes(count: Int) throws -> [UInt8] {
-		try self.source.readBytes(count: count)
+	@inlinable @inline(__always) func readBytes(count: Int) throws -> [UInt8] {
+		guard count > 0 else { return [] }
+		return try self.source.readBytes(count: count)
 	}
 
 	/// Read the next `count` bytes into a Data object
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: A data object containing the read bytes
-	func readData(count: Int) throws -> Data {
-		try self.source.readData(count: count)
+	@inlinable @inline(__always) func readData(count: Int) throws -> Data {
+		guard count > 0 else { return Data() }
+		return try self.source.readData(count: count)
 	}
 
 	/// Reads the bytes up to **and including** the next instance of `byte` or EOD.
 	/// - Parameter byte: The byte to use as the terminator
 	/// - Returns: A data object containing the read bytes
 	func readUpToNextInstanceOfByte(_ byte: UInt8) throws -> Data {
-		var result = Data()
+		var result = Data(capacity: 1024)
 		while true {
 			do {
 				let read = try self.source.readByte()
@@ -62,14 +66,14 @@ public extension BytesReader {
 
 	/// Read up to **and including** the next instance of a **single** null byte (0x00)
 	/// - Returns: A data object containing the read bytes
-	@inlinable func readUpToNextNullByte() throws -> Data {
+	@inlinable @inline(__always) func readUpToNextNullByte() throws -> Data {
 		try self.readUpToNextInstanceOfByte(0x00)
 	}
 
 	/// Read all of the remaining data in the source.
 	///
 	/// After this call, any further reads will throw (end of data)
-	@inlinable func readAllRemainingData() throws -> Data {
+	@inlinable @inline(__always) func readAllRemainingData() throws -> Data {
 		try self.source.readAllRemainingData()
 	}
 }

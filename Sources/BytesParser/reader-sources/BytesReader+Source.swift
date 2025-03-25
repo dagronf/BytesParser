@@ -23,8 +23,8 @@ import Foundation
 public protocol BytesReaderSource {
 	/// Does the source have more data available for reading?
 	var hasMoreData: Bool { get }
-	/// The current read offset within the source
-	func readOffset() -> Int
+	/// The current read position within the source
+	var readPosition: Int { get }
 	/// Read data from the source
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: Data
@@ -53,7 +53,8 @@ public extension BytesReaderSource {
 	/// Read bytes from the source
 	/// - Parameter count: The number of bytes to read
 	/// - Returns: Array of bytes
-	@inlinable func readBytes(count: Int) throws -> [UInt8] {
+	@inlinable @inline(__always)
+	func readBytes(count: Int) throws -> [UInt8] {
 		Array(try self.readData(count: count))
 	}
 }

@@ -58,7 +58,7 @@ public class BytesReader {
 	}
 
 	/// The current read offset within the source
-	@inlinable public var offset: Int { self.source.readOffset() }
+	@inlinable public var readPosition: Int { self.source.readPosition }
 
 	/// Is there more data available in the source for reading?
 	@inlinable public var hasMoreData: Bool { self.source.hasMoreData }
@@ -118,6 +118,14 @@ public extension BytesReader {
 
 // MARK: - Convenience readers
 
+public extension Data {
+	/// Parse the data using the supplied BytesReader object
+	/// - Parameter block: The block to call, providing a BytesReader instance for parsing the data content
+	func bytesReader(_ block: (BytesReader) throws -> Void) rethrows {
+		try block(BytesReader(data: self))
+	}
+}
+
 public extension BytesReader {
 	/// Parse the contents of a `Data` object
 	/// - Parameters:
@@ -141,7 +149,10 @@ public extension BytesReader {
 	/// - Parameters:
 	///   - fileURL: The local file URL to read from
 	///   - block: The block containing the parsing calls
-	@inlinable static func read<ResultType>(fileURL: URL, _ block: (BytesReader) throws -> ResultType) throws -> ResultType {
+	static func read<ResultType>(
+		fileURL: URL,
+		_ block: (BytesReader) throws -> ResultType
+	) throws -> ResultType {
 		let parser = try BytesReader(fileURL: fileURL)
 		return try block(parser)
 	}

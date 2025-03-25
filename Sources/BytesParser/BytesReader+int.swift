@@ -26,9 +26,10 @@ public extension BytesReader {
 	/// - Parameter byteOrder: The expected byte order for the integer
 	/// - Returns: The integer value
 	func readInteger<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness) throws -> T {
-		let data = try self.source.readData(count: MemoryLayout<T>.size)
-		let value = data.withUnsafeBytes { $0.loadUnaligned(as: T.self) }
-		return byteOrder == .big ? value.bigEndian : value.littleEndian
+		let data = try self.source.readData(count: MemoryLayout<T>.stride)
+		return data
+			.withUnsafeBytes { $0.loadUnaligned(as: T.self) }
+			.usingEndianness(byteOrder)
 	}
 
 	/// Read integers from the storage
@@ -37,8 +38,14 @@ public extension BytesReader {
 	///   - count: The expected number of integers to read
 	/// - Returns: The read integers
 	func readIntegers<T: FixedWidthInteger>(_ byteOrder: BytesParser.Endianness, count: Int) throws -> [T] {
-		try (0 ..< count).map { _ in
-			try self.readInteger(byteOrder)
+		guard count > 0 else { return [] }
+		// Read in all the data in one big chunk
+		let data = try self.source.readData(count: MemoryLayout<T>.stride * count)
+		return (0 ..< count).map { offset in
+			return data.withUnsafeBytes {
+				$0.loadUnaligned(fromByteOffset: offset * MemoryLayout<T>.stride,  as: T.self)
+					.usingEndianness(byteOrder)
+			}
 		}
 	}
 }

@@ -177,6 +177,51 @@ final class RandomAccessParsingTests: XCTestCase {
 			XCTAssertEqual([0x11], Array(data1))
 			XCTAssertEqual([0x22, 0x33, 0x44], Array(data2))
 		}
+
+		do {
+			//                0     1     2     3     4
+			let data = Data([0x11, 0x22, 0x33, 0x44, 0x55])
+			try data.bytesReader { reader in
+				try reader.seek(4) // Should be the last byte
+				XCTAssertEqual(0x55, try reader.readByte())
+				XCTAssertFalse(reader.hasMoreData)
+
+				// Rewind back to start
+				try reader.rewind()
+				XCTAssertTrue(reader.hasMoreData)
+				XCTAssertEqual(0, reader.readPosition)
+
+				// Seeking after the last byte
+				XCTAssertThrowsError(try reader.seek(5))
+
+				// Seeking to the first byte
+				try reader.seekSet(0)
+				XCTAssertEqual(0x11, try reader.readByte())
+
+				// Seeking from the start to two bytes in
+				try reader.seekSet(2)
+				XCTAssertEqual(0x33, try reader.readByte())
+
+				// Seeking from the start to after the last byte
+				XCTAssertThrowsError(try reader.seekSet(5))
+
+				// Seeking before the first byte
+				XCTAssertThrowsError(try reader.seekEnd(5))
+				// Seeking to the first byte from the end
+				try reader.seekEnd(4)
+				XCTAssertEqual(0x11, try reader.readByte())
+
+				try reader.seekSet(2)
+				// Seeking from the current read position to out-of-bounds
+				XCTAssertThrowsError(try reader.seek(3))
+				// Seeking from the current read position to the last character bounds
+				try reader.seek(2)
+				XCTAssertEqual(0x55, try reader.readByte())
+
+				XCTAssertEqual(5, reader.readPosition)
+				XCTAssertFalse(reader.hasMoreData)
+			}
+		}
 	}
 
 	func testReadToEndOfData() throws {

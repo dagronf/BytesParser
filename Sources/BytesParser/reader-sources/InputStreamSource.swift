@@ -23,7 +23,6 @@ import Foundation
 
 /// An input stream source. Does not support changing the read position
 public class InputStreamSource: BytesReaderSource {
-
 	// The stream containing the data to be parsed
 	let inputStream: InputStream
 
@@ -31,7 +30,7 @@ public class InputStreamSource: BytesReaderSource {
 	let readBuffer = ByteBuffer()
 
 	/// The current read offset within the source
-	var readPosition: Int = 0
+	public private(set) var readPosition: Int = 0
 
 	public init(inputStream: InputStream) {
 		self.inputStream = inputStream
@@ -41,8 +40,6 @@ public class InputStreamSource: BytesReaderSource {
 	public var hasMoreData: Bool {
 		self.inputStream.hasBytesAvailable
 	}
-
-	public func readOffset() -> Int { self.readPosition }
 
 	public func readData(count: Int) throws -> Data {
 		assert(count > 0)

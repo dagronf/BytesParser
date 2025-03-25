@@ -29,11 +29,10 @@ public extension BytesWriter {
 	/// - Returns: The number of bytes written
 	func writeInteger<T: FixedWidthInteger>(_ value: T, _ byteOrder: BytesParser.Endianness) throws -> Int {
 		// Map the value to the correct endianness...
-		let mapped = (byteOrder == .big) ? value.bigEndian : value.littleEndian
-
+		let mapped = value.usingEndianness(byteOrder)
 		// ... then write out the raw bytes
 		return try withUnsafeBytes(of: mapped) { pointer in
-			try self.writeBuffer(pointer, byteCount: MemoryLayout<T>.size)
+			try self.writeBuffer(pointer, byteCount: MemoryLayout<T>.stride)
 		}
 	}
 
@@ -43,9 +42,18 @@ public extension BytesWriter {
 	///   - byteOrder: The byte order to apply when writing
 	/// - Returns: The number of bytes written
 	@discardableResult
-	func writeIntegers<T: FixedWidthInteger>(_ value: [T], _ byteOrder: BytesParser.Endianness) throws -> Int {
-		_ = try value.map { try self.writeInteger($0, byteOrder) }
-		return MemoryLayout<T>.size * value.count
+	func writeIntegers<T: FixedWidthInteger>(_ values: [T], _ byteOrder: BytesParser.Endianness) throws -> Int {
+		// If no values just return
+		guard values.count > 0 else { return 0 }
+
+		// Map the integer values accordingly
+		let mapped = values.map { $0.usingEndianness(byteOrder) }
+
+		// Map the raw integer array into a Data object
+		let count = try mapped.withUnsafeBytes {
+			try self.writeBuffer($0, byteCount: mapped.count * MemoryLayout<T>.stride)
+		}
+		return count
 	}
 }
 
