@@ -173,3 +173,43 @@ public extension BytesReader {
 		try BytesReader(inputStream: inputStream).readAllRemainingData()
 	}
 }
+
+// MARK: - Read up to pattern match
+
+public extension BytesReader {
+	/// Read until we find the next instance of a byte pattern
+	/// - Parameter pattern: The pattern to find
+	///
+	/// - If found, sets the read pointer to the _next_ character after the match
+	/// - Throws an error if the pattern isn't found. No more data can be read from the stream in this case
+	func readThroughNextInstanceOfPattern(_ pattern: Data) throws {
+		var matchCount = 0
+		while matchCount < pattern.count {
+			let byte = try self.readByte()
+			if byte == pattern[matchCount] {
+				matchCount += 1
+			}
+			else {
+				// Match failed. Reset the window
+				matchCount = 0
+				// In the case where the currently read byte matches the
+				// first byte in the pattern, make sure we mark the match
+				if byte == pattern[0] {
+					matchCount = 1
+				}
+			}
+		}
+	}
+
+	/// Read until we find the next instance of an ASCII pattern
+	/// - Parameter asciiPattern: The ascii string to find
+	///
+	/// - If found, sets the read pointer to the _next_ character after the match
+	/// - Throws an error if the pattern isn't found. No more data can be read from the stream in this case
+	func readThroughNextInstanceOfASCII(_ asciiPattern: String) throws {
+		guard let d = asciiPattern.data(using: .ascii) else {
+			throw BytesReader.ReaderError.invalidStringEncoding
+		}
+		return try self.readThroughNextInstanceOfPattern(d)
+	}
+}

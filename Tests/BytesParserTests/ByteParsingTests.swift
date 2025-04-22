@@ -702,4 +702,45 @@ final class ByteIterableTests: XCTestCase {
 			}
 		}
 	}
+
+	func testMoveToPattern1() throws {
+		let data = a2d("$$$/colorbook/HKSE/title=HKS E")
+
+		try data.bytesReader { r in
+			try r.readThroughNextInstanceOfASCII("HKS")
+			XCTAssertEqual(17, r.readPosition)
+			XCTAssertEqual(c2i("E"), UInt32(try r.readByte()))
+			try r.readThroughNextInstanceOfASCII("HKS")
+			XCTAssertEqual(28, r.readPosition)
+			XCTAssertEqual(c2i(" "), UInt32(try r.readByte()))
+		}
+
+		try data.bytesReader { r in
+			// HKSe doesn't exist
+			XCTAssertThrowsError(try r.readThroughNextInstanceOfASCII("HKSe"))
+		}
+		try data.bytesReader { r in
+			// Check we find it at the last position
+			try r.readThroughNextInstanceOfASCII(" E")
+			XCTAssertEqual(30, r.readPosition)
+			XCTAssertFalse(r.hasMoreData)
+		}
+	}
+
+	func testMoveToPattern2() throws {
+		let data = a2d("AAABAABCat")
+		try data.bytesReader { r in
+			try r.readThroughNextInstanceOfASCII("AAB")
+			XCTAssertEqual(7, r.readPosition)
+			XCTAssertEqual(c2i("C"), UInt32(try r.readByte()))
+		}
+
+		// Stopped matching, reset match but read byte is a first match
+		let data2 = a2d("ABCBCX")
+		try data2.bytesReader { r in
+			try r.readThroughNextInstanceOfASCII("BCX")
+			XCTAssertEqual(6, r.readPosition)
+			XCTAssertFalse(r.hasMoreData)
+		}
+	}
 }

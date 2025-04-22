@@ -55,6 +55,7 @@ public extension BytesWriter {
 		case emptyBuffer
 		case notSupported
 		case noDataAvailable
+		case invalidByteString
 	}
 }
 
