@@ -201,6 +201,15 @@ public extension BytesReader {
 		}
 	}
 
+	/// Read until we find the next instance of a byte pattern
+	/// - Parameter bytes: The bytes to find
+	///
+	/// - If found, sets the read pointer to the _next_ character after the match
+	/// - Throws an error if the pattern isn't found. No more data can be read from the stream in this case
+	func readThroughNextInstanceOfPattern(_ bytes: UInt8...) throws {
+		try self.readThroughNextInstanceOfPattern(Data(bytes))
+	}
+
 	/// Read until we find the next instance of an ASCII pattern
 	/// - Parameter asciiPattern: The ascii string to find
 	///
