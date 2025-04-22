@@ -43,6 +43,19 @@ public extension BytesWriter {
 		return bytes.count
 	}
 
+	/// Write raw bytes to the destination
+	/// - Parameter bytes: The bytes to write
+	/// - Returns: The number of bytes written
+	///
+	/// Usage:
+	/// ```swift
+	/// try writer.writeBytes(0x20, 0x40, 0x60, 0x80)
+	/// ```
+	@discardableResult
+	func writeBytes(_ rawBytes: UInt8...) throws -> Int {
+		try self.writeBytes(rawBytes)
+	}
+
 	/// Write a single byte to the destination
 	/// - Parameter byte: The byte to write
 	/// - Returns: The number of bytes written
@@ -56,6 +69,44 @@ public extension BytesWriter {
 		}
 		self.count += 1
 		return 1
+	}
+}
+
+extension BytesWriter {
+	/// Write the byte representation of a byte string to the destination
+	/// - Parameter byteString: The string representation of bytes (see discussion)
+	/// - Returns: The number of bytes written
+	///
+	/// This method is a convenient way of writing raw bytes to the destination
+	/// without having the deal with raw byte notiations.
+	///
+	/// eg: "00000010 00000001 00000000 00006E75 6C6C0000 0001"
+	///
+	/// * skips spaces
+	/// * Requires an even number of nibbles (not including spaces) (2 nibbles = 1 byte)
+	/// * Throws error if the string is incorrectly formatted
+	@discardableResult
+	func writeByteString(_ byteString: String) throws -> Int {
+		// Remove spaces
+		let byteString = byteString.filter { $0 != " " }
+		guard byteString.count % 2 == 0 else {
+			throw BytesWriter.WriterError.invalidByteString
+		}
+
+		var bytes = [UInt8]()
+		var index = byteString.startIndex
+
+		while index < byteString.endIndex {
+			let nextIndex = byteString.index(index, offsetBy: 2, limitedBy: byteString.endIndex) ?? byteString.endIndex
+			let byteString = byteString[index ..< nextIndex]
+			if let byte = UInt8(byteString, radix: 16) {
+				bytes.append(byte)
+			} else {
+				throw BytesWriter.WriterError.unableToWriteBytes
+			}
+			index = nextIndex
+		}
+		return try self.writeBytes(bytes)
 	}
 }
 

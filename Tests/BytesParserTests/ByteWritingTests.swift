@@ -22,6 +22,15 @@ final class DataWritingTests: XCTestCase {
 		XCTAssertEqual(4, data.count)
 		let raw: [UInt8] = data.prefix(4).map { $0 }
 		XCTAssertEqual([0x20, 0x40, 0x60, 0x80], raw)
+
+		do {
+			let data = try BytesWriter.build { writer in
+				try writer.writeBytes(0x20, 0x40, 0x60, 0x80)
+			}
+			XCTAssertEqual(4, data.count)
+			let raw: [UInt8] = data.prefix(4).map { $0 }
+			XCTAssertEqual([0x20, 0x40, 0x60, 0x80], raw)
+		}
 	}
 
 	func testBasic2() throws {
@@ -359,6 +368,24 @@ final class DataWritingTests: XCTestCase {
 
 			// Should fail
 			XCTAssertThrowsError(try r.readByte())
+		}
+	}
+
+	func testWriteByteString() throws {
+
+		do {
+			let data = try BytesWriter.build { w in
+				let sz = try w.writeByteString("00000010 00000001 00000000 00006E75 6C6C0000 0001")
+				XCTAssertEqual(sz, 22)
+
+				// Uneven number of bytes
+				XCTAssertThrowsError(try w.writeByteString("0000 1"))
+			}
+
+			try data.bytesReader { r in
+				let d = try r.readBytes(count: 22)
+				XCTAssertEqual(d, [0x00,0x00,0x00,0x10, 0x00,0x00,0x00,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x6e,0x75, 0x6c,0x6c,0x00,0x00, 0x00,0x01])
+			}
 		}
 	}
 }

@@ -97,3 +97,14 @@ extension Data {
 		return reduce("") { $0 + String(format: "%02x ", $1) }
 	}
 }
+
+/// Convert a single character (eg "E") to its integer equivalent
+func c2i(_ character: Character) -> UInt32 {
+	guard let scalar = character.unicodeScalars.first else {
+		fatalError("Character has no scalar values")
+	}
+	return scalar.value
+}
+
+/// Convert the ascii string to raw data
+func a2d(_ str: String) -> Data { str.data(using: .ascii)! }
